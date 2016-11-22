@@ -19,6 +19,8 @@ entity fsm is
 	port (
 		reset         : in  std_logic;
 		clk           : in  std_logic;
+		-- neural network layer mode (acc or weight load)
+		fsm_mode	: in std_logic;
 		-- Control signals
 		ctrl_we_mode    : out  std_logic;
 		ctrl_we_shift   : out  std_logic;
@@ -55,7 +57,10 @@ architecture synth of fsm is
 	-- address counter for weight loading or neurons classic accumulation
 	signal current_addr, next_addr : std_logic_vector(WADDR-1 downto 0); 
 	-- counter for mirror chain
-	signal current_shift_counter, next_shift_counter : integer;
+	signal current_shift_counter, next_shift_counter : std_logic_vector(15 downto 0);
+
+	-- flag to signal mirror that it can do its things
+	signal flag_mirror_chain, next_flag_mirror_chain : std_logic;
 begin
 
 	------------------------
@@ -71,13 +76,15 @@ begin
 				-- present = next variable
 				
 				-- state of mirror FSM
-				current_state_mirror = next_state_mirror;
+				current_state_mirror <= next_state_mirror;
 				-- state of neurons accumulation FSM
-				current_state_acc= next_state_acc;
+				current_state_acc<= next_state_acc;
 				-- address counter for weight loading or neurons classic accumulation
-				current_addr= next_addr; 
+				current_addr <= next_addr; 
 				-- counter for mirror chain
-				current_shift_counter= next_shift_counter;
+				current_shift_counter <= next_shift_counter;
+				-- flag for mirror chain fsm
+				flag_mirror_chain <= next_flag_mirror_chain;
 
 			end if;
 		end if;
@@ -124,12 +131,12 @@ begin
 				-- if neurons has got mode_switch signal
 				-- goes to NOTIFY1N
 				if (sensor_we_mode = '1') then
-					next_state_acc <= NOTIFY_1N;	
+					next_state_acc <= NOTIFY_1N;
 				else
 					next_state_acc <= MODE_WEIGHT;
 				end if;
 
-			when NOTIFY_1N => 
+			when NOTIFY_1N =>
 				ctrl_we_mode <= '1';
 				ctrl_we_shift <= '1';
 				ctrl_we_valid <= '0';
@@ -157,7 +164,7 @@ begin
 				next_addr <= (others => '0');
 
 				if (nN_we_next = '1') then
-					next_state_acc = END_CONFIG;
+					next_state_acc<= END_CONFIG;
 				else
 					if (sensor_we_shift = '1') then
 						next_state_acc <= WAIT_WEIGHT;	
@@ -313,18 +320,22 @@ begin
 				next_addr <= current_addr;
 
 				-- need to pass flag to mirror FSM
-				-- TODO implement mirror FSM flag
+				next_flag_mirror_chain <= '1';
 					
-				-- TODO implement mode switching before
+				-- mode switching before
 				-- going again in acc loop again 
-				next_state_acc <= WAIT_1D;
+				if (fsm_mode = '1') then
+					next_state_acc <= MODE_WEIGHT;
+				else
+					next_state_acc <= WAIT_1D;
+				end if;
 
 		end case;
 
 	end process;
 
 	-- process to handle mirror chain monitoring
-	process (current_state, current_shift_counter)
+	process (current_state, current_shift_counter, sensor_shift, sensor_copy, flag_mirror_chain)
 	begin
 		case current_state is
 			when SHIFT_MODE =>
@@ -332,14 +343,12 @@ begin
 				ctrl_shift_en <= '0';
 				next_shift_counter <= (others => '0');
 
-				-- TODO change to shift_cpy if flag's up
-				-- put flag down
-
-				-- if ( flag's up) then
-				next_state_mirror <= SHIFT_CPY;
-				-- else
-				-- next_state_mirror <= SHIFT_MODE;
-				-- end if;
+				if (flag_mirror_chain = '1') then
+					next_flag_mirror_chain <= '0';
+					next_state_mirror <= SHIFT_CPY;
+				else
+					next_state_mirror <= SHIFT_MODE;
+				end if;
 
 			when SHIFT_CPY =>
 				-- copy accumulated value to mirror buffer
