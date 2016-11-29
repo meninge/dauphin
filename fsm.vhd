@@ -19,8 +19,6 @@ entity fsm is
 	port (
 		reset         : in  std_logic;
 		clk           : in  std_logic;
-		-- neural network layer mode (acc or weight load)
-		fsm_mode	: in std_logic;
 		-- Control signals
 		ctrl_we_mode    : out  std_logic;
 		ctrl_we_shift   : out  std_logic;
@@ -40,6 +38,10 @@ entity fsm is
 		sensor_we_mode  : in std_logic;
 		sensor_we_shift : in std_logic;
 		sensor_we_valid : in std_logic
+
+		-- inputs
+		fsm_mode	: in std_logic;
+		
 	);
 end fsm;
 
