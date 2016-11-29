@@ -1,0 +1,6 @@
+*.cache
+*.xpr
+*.jou
+*.log
+*.sim
+*.hw
