@@ -192,5 +192,3 @@ begin
 	end_of_frame   <= '0';
 
 end architecture;
-
-

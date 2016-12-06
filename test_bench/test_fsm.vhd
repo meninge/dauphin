@@ -38,7 +38,13 @@ ARCHITECTURE behavior OF test_fsm IS
 			     sensor_we_valid : in std_logic;
 
 			     -- inputs
-			     fsm_mode	: in std_logic
+			     fsm_mode	: in std_logic;
+			     -- in FIFO
+			     cnt_fifo_in : in std_logic_vector(WDATA-1 downto 0);
+			     ack_fifo_in : out std_logic;
+			     -- out FIFO
+			     cnt_fifo_out  : in std_logic_vector(WDATA-1 downto 0);
+			     ack_fifo_out  : out std_logic;
 		     );
 	end component;
 	signal clk           :   std_logic := '0';
@@ -62,6 +68,11 @@ ARCHITECTURE behavior OF test_fsm IS
 	signal sensor_we_mode  :  std_logic := '0';
 	signal sensor_we_shift :  std_logic := '0';
 	signal sensor_we_valid :  std_logic := '0';
+
+	signal cnt_fifo_in : std_logic_vector(WDATA-1 downto 0);
+	signal ack_fifo_in : std_logic;
+	signal cnt_fifo_out  : std_logic_vector(WDATA-1 downto 0);
+	signal ack_fifo_out  : std_logic;
 
 	-- puts
 	signal fsm_mode	:  std_logic := '0';
@@ -98,6 +109,11 @@ begin
 			 sensor_we_valid => sensor_we_valid,
 			 -- inputs
 			 fsm_mode => fsm_mode
+			 -- in FIFO
+			 cnt_fifo_in => cnt_fifo_in,
+			 ack_fifo_in => ack_fifo_in,
+			 cnt_fifo_out  => cnt_fifo_out,
+			 ack_fifo_out  => ack_fifo_out
 		 );       
 
 
@@ -113,53 +129,56 @@ begin
 	stim_proc: process
 	begin         
 		wait for 1 ns;
+		
+		-- reset component
 		reset       <= '1';
 		fsm_mode    <= '0';
-		--signal ctrl_we_mode    :   std_logic;
-		--signal ctrl_we_shift   :   std_logic;
-		--signal ctrl_we_valid   :   std_logic;
-		--signal ctrl_accu_clear :   std_logic;
-		--signal ctrl_accu_add   :   std_logic;
-		--signal ctrl_shift_en   :   std_logic;
-		--signal ctrl_shift_copy :   std_logic;
-		--signal addr            :   std_logic_vector(9 downto 0);
-		--signal n0_we_prev      :   std_logic;
-		--signal nN_we_next      :  std_logic;
-		--signal sensor_shift    :  std_logic;
-		--signal sensor_copy     :  std_logic;
-		--signal sensor_we_mode  :  std_logic;
-		--signal sensor_we_shift :  std_logic;
-		--signal sensor_we_valid :  std_logic;
-
 		wait for 1 ns;
+
+
+		-- accu_mode
 		reset       <= '0';
 		fsm_mode    <= '0';
 		wait for 1 ns;
+		
+		-- data incoming accu_data
 		reset       <= '0';
 		sensor_we_valid <= '1';
 		wait for 2000 ns;
+
+		-- weight mode
 		reset       <= '0';
 		sensor_we_valid <= '0';
 		fsm_mode <= '1';
 		wait for 1 ns;
+
+		-- neuron is in weight mode
 		sensor_we_mode  <= '1';
 		fsm_mode <= '0';
 		reset       <= '0';
 		wait for 2 ns;
+
+		-- neuron has copied buffer
+		-- neuron shifted reg_config
 		sensor_copy <= '1';
 		sensor_we_shift <= '1';
 		sensor_we_mode  <= '0';
 		wait for 1 ns;
+
+		-- data is incoming
 		sensor_copy <= '0';
 		sensor_we_shift <= '0';
 		sensor_we_valid <= '1';
 		wait for 2000 ns;
+
+		-- mirror chain received shift
 		sensor_shift <= '1';
 		sensor_we_valid <= '0';
 		wait for 1 ns;
-		sensor_shift <= '0';
 
+		sensor_shift <= '0';
 		wait;
+
 	end process;
 
 END;

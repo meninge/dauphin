@@ -20,6 +20,7 @@ entity fsm is
 		reset         : in  std_logic;
 		clk           : in  std_logic;
 		-- Control signals
+		-- (go to all neurons)
 		ctrl_we_mode    : out  std_logic;
 		ctrl_we_shift   : out  std_logic;
 		ctrl_we_valid   : out  std_logic;
@@ -28,11 +29,15 @@ entity fsm is
 		ctrl_shift_en   : out  std_logic;
 		ctrl_shift_copy : out  std_logic;
 		-- Address used for Read and Write
+		-- (go to all neurons)
 		addr            : out  std_logic_vector(WADDR-1 downto 0);
 		-- Ports for Write Enable
+		-- go to first neuron
 		n0_we_prev         : out  std_logic;
+		-- go to last neuron
 		nN_we_next         : in std_logic;
 		-- Sensors, for synchronization with the controller
+		-- go to first neurons
 		sensor_shift    : in std_logic;
 		sensor_copy     : in std_logic;
 		sensor_we_mode  : in std_logic;
