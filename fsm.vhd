@@ -41,6 +41,13 @@ entity fsm is
 
 		-- inputs
 		fsm_mode	: in std_logic;
+
+		-- input FIFO control
+		ack_fifo_in	: out std_logic;
+		cnt_fifo_in	: in std_logic_vector(WDATA-1 downto 0);
+		-- output FIFO control
+		ack_fifo_out	: out std_logic;
+		cnt_fifo_out	: in std_logic_vector(WDATA-1 downto 0)
 		
 	);
 end fsm;
@@ -104,6 +111,8 @@ begin
 		-- variable var_doin    : std_logic := '0';
 	begin
 		-- need to set all signals at each step
+		ack_fifo_in <= '0';
+
 		case current_state is
 			when RESET_STATE =>
 				ctrl_we_mode <= '0';
@@ -190,6 +199,7 @@ begin
 
 				if (sensor_we_valid = '1') then
 					next_state_acc <= SEND_WEIGHT;
+					ack_fifo_in <= '1';
 				else
 					next_state_acc <= WAIT_WEIGHT;
 				end if;
@@ -306,6 +316,7 @@ begin
 					
 				if ( sensor_we_valid = '1') then
 					next_state_acc <= SEND_DATA;
+					ack_fifo_in <= '1';
 				else
 					next_state_acc <= WAIT_DATA;
 				end if;
@@ -331,7 +342,6 @@ begin
 				else
 					next_state_acc <= WAIT_1D;
 				end if;
-
 		end case;
 
 	end process;
@@ -339,6 +349,8 @@ begin
 	-- process to handle mirror chain monitoring
 	process (current_state, current_shift_counter, sensor_shift, sensor_copy, flag_mirror_chain)
 	begin
+		-- signals that are just up for one cycle go there
+		ack_fifo_out <= '0';
 		case current_state is
 			when SHIFT_MODE =>
 				ctrl_shift_copy <= '0';
@@ -361,7 +373,6 @@ begin
 				next_state_mirror <= WAIT_SHIFT_CPY;
 
 			when WAIT_SHIFT_CPY =>
-				-- FIXME Is this state necessary ?
 				ctrl_shift_copy <= '0';
 				ctrl_shift_en<= '0';
 				next_shift_counter <= (others => '0');
@@ -375,32 +386,31 @@ begin
 			when SHIFT =>
 				ctrl_shift_copy <= '0';
 				ctrl_shift_en <= '1';
+				ack_fifo_out <= '1';
 				-- loop until we emptied all neurons mirrors
 
 				next_shift_counter <= std_logic_vector( unsigned (current_shift_counter ) +1);
 
-				if (unsigned ( current_shift_counter ) = NB_NEURONS -1) then
+				if (unsigned (current_shift_counter) = NB_NEURONS -1) then
 					next_state_mirror <= SHIFT_MODE;
 				else
 					next_state_mirror <= SHIFT;
 				end if;
 
 			when WAIT_SHIFT => 
-				-- FIXME Is this state necessary ?
+				-- TODO optimize with cnt_fifo_out
 				ctrl_shift_copy <= '0';
 				ctrl_shift_en<= '0';
 				next_shift_counter <= (others => '0');
 
-				if (sensor_shift= '1') then
+				if (sensor_shift = '1') then
 					next_state_mirror <= SHIFT;
 				else
 					next_state_mirror <= WAIT_SHIFT;
 				end if;
-
 		end case;
 
 	end process; 
 
-	-- Assignment of top-level ports
 
 end architecture;
