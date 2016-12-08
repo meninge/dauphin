@@ -91,11 +91,12 @@ begin
 					miroir <= std_logic_vector(accu(WACCU-1 downto 0));
 				elsif (ctrl_shift_en = '1') then
 					-- we have to shift the miroir prev into the miroir next
+					sh_data_out <= miroir;
 					miroir <= sh_data_in;
 				end if;
 			end if;
 		end if;
-		sh_data_out <= miroir;
+		--sh_data_out <= miroir;
 	end process ;
 
 	sensor : process (ctrl_we_mode, ctrl_we_shift, ctrl_we_valid, ctrl_shift_copy, ctrl_shift_en)
@@ -131,11 +132,12 @@ begin
 		if rising_edge(clk) then
 			if (ctrl_we_mode = '1') and (ctrl_we_shift = '1') then
 				-- update the reg_config
+				we_next <= reg_config;
 				reg_config <= we_prev;
 			end if;
 				
 		end if;
-		we_next <= reg_config;
+		--we_next <= reg_config;
 	end process reg_conf;
 
 	load_weight : process (clk, ctrl_we_mode, ctrl_we_shift, reg_config, ctrl_we_valid)

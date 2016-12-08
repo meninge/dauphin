@@ -42,7 +42,7 @@ entity fsm is
 		sensor_copy     : in std_logic;
 		sensor_we_mode  : in std_logic;
 		sensor_we_shift : in std_logic;
-		sensor_we_valid : in std_logic
+		sensor_we_valid : in std_logic;
 
 		-- inputs
 		fsm_mode	: in std_logic;
@@ -85,7 +85,8 @@ begin
 	begin
 		if rising_edge(clk) then
 			if (reset = '1') then 
-				current_state <= RESET_STATE;
+				current_state_acc <= RESET_STATE;
+				current_state_mirror <= RESET_STATE;
 			else
 				-- present = next variable
 				
@@ -112,13 +113,13 @@ begin
 	-- La liste de sensibilite doit contenir tous les signaux sur les quels on fait des 'if' par exemple
 
 	-- process to handle classic neurons accumulation and weight loading
-	process (current_state, sensor_we_mode, sensor_we_shift, sensor_we_valid, current_addr, nN_we_next)
+	process (current_state_acc, sensor_we_mode, sensor_we_shift, sensor_we_valid, current_addr, nN_we_next)
 		-- variable var_doin    : std_logic := '0';
 	begin
 		-- need to set all signals at each step
 		ack_fifo_in <= '0';
 
-		case current_state is
+		case current_state_acc is
 			when RESET_STATE =>
 				ctrl_we_mode <= '0';
 				ctrl_we_shift <= '0';
@@ -131,7 +132,7 @@ begin
 				next_addr <= (others => '0');
 
 				-- in case of reset, fsm goes to MODE_ACC 
-				next_state_acc <= MODE_ACC;
+				next_state_acc <= END_ACC;
 
 			when MODE_WEIGHT =>
 				ctrl_we_mode <= '1';
@@ -347,16 +348,17 @@ begin
 				else
 					next_state_acc <= WAIT_1D;
 				end if;
+			when others =>
 		end case;
 
 	end process;
 
 	-- process to handle mirror chain monitoring
-	process (current_state, current_shift_counter, sensor_shift, sensor_copy, flag_mirror_chain)
+	process (current_state_mirror, current_shift_counter, sensor_shift, sensor_copy, flag_mirror_chain)
 	begin
 		-- signals that are just up for one cycle go there
 		ack_fifo_out <= '0';
-		case current_state is
+		case current_state_mirror is
 			when SHIFT_MODE =>
 				ctrl_shift_copy <= '0';
 				ctrl_shift_en <= '0';
@@ -413,6 +415,7 @@ begin
 				else
 					next_state_mirror <= WAIT_SHIFT;
 				end if;
+			when others =>
 		end case;
 
 	end process; 

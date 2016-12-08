@@ -6,6 +6,8 @@ use UNISIM.vcomponents.all;
 library UNIMACRO;
 use unimacro.Vcomponents.all;
 
+use iEEE.numeric_std.all;
+
 -- entity declaration for your testbench.Dont declare any ports here
 ENTITY test_1neuron_fsm IS 
 	END test_1neuron_fsm;
@@ -40,10 +42,10 @@ ARCHITECTURE behavior OF test_1neuron_fsm IS
 			     -- inputs
 			     fsm_mode	: in std_logic;
 			     -- in FIFO
-			     cnt_fifo_in : in std_logic_vector(WDATA-1 downto 0);
+			     cnt_fifo_in : in std_logic_vector(15 downto 0);
 			     ack_fifo_in : out std_logic;
 			     -- out FIFO
-			     cnt_fifo_out  : in std_logic_vector(WDATA-1 downto 0);
+			     cnt_fifo_out  : in std_logic_vector(15 downto 0);
 			     ack_fifo_out  : out std_logic
 		     );
 	end component;
@@ -59,16 +61,16 @@ ARCHITECTURE behavior OF test_1neuron_fsm IS
 			ctrl_shift_en   : in  std_logic;
 			ctrl_shift_copy : in  std_logic;
 			-- Address used for Read and Write
-			addr            : in  std_logic_vector(WADDR-1 downto 0);
+			addr            : in  std_logic_vector(9 downto 0);
 			-- Ports for Write Enable
 			we_prev         : in  std_logic;
 			we_next         : out std_logic;
-			write_data      : in  std_logic_vector(WWEIGHT-1 downto 0);
+			write_data      : in  std_logic_vector(15 downto 0);
 			-- Data input, 2 bits
-			data_in         : in  std_logic_vector(WDATA-1 downto 0);
+			data_in         : in  std_logic_vector(15 downto 0);
 			-- Scan chain to extract values
-			sh_data_in      : in  std_logic_vector(WACCU-1 downto 0);
-			sh_data_out     : out std_logic_vector(WACCU-1 downto 0);
+			sh_data_in      : in  std_logic_vector(31 downto 0);
+			sh_data_out     : out std_logic_vector(31 downto 0);
 			-- Sensors, for synchronization with the controller
 			sensor_shift    : out std_logic;
 			sensor_copy     : out std_logic;
@@ -95,6 +97,13 @@ ARCHITECTURE behavior OF test_1neuron_fsm IS
 	-- Ports for Write Enable
 	signal n0_we_prev      :   std_logic := '0';
 	signal nN_we_next      :  std_logic := '0';
+	-- data weight
+	signal write_data   :  std_logic_vector(15 downto 0);
+	-- Data input, 2 bits
+	signal data_in         : std_logic_vector(15 downto 0);
+	-- Scan chain to extract values
+	signal sh_data_in      : std_logic_vector(31 downto 0);
+	signal sh_data_out     : std_logic_vector(31 downto 0);
 	-- Sensors, for synchronization with the controller
 	signal sensor_shift    :  std_logic := '0';
 	signal sensor_copy     :  std_logic := '0';
@@ -102,9 +111,9 @@ ARCHITECTURE behavior OF test_1neuron_fsm IS
 	signal sensor_we_shift :  std_logic := '0';
 	signal sensor_we_valid :  std_logic := '0';
 
-	signal cnt_fifo_in : std_logic_vector(WDATA-1 downto 0);
+	signal cnt_fifo_in : std_logic_vector(15 downto 0);
 	signal ack_fifo_in : std_logic;
-	signal cnt_fifo_out  : std_logic_vector(WDATA-1 downto 0);
+	signal cnt_fifo_out  : std_logic_vector(15 downto 0);
 	signal ack_fifo_out  : std_logic;
 
 	-- puts
@@ -141,14 +150,14 @@ begin
 			 sensor_we_shift => sensor_we_shift,
 			 sensor_we_valid => sensor_we_valid,
 			 -- inputs
-			 fsm_mode => fsm_mode
+			 fsm_mode => fsm_mode,
 			 -- in FIFO
 			 cnt_fifo_in => cnt_fifo_in,
 			 ack_fifo_in => ack_fifo_in,
 			 cnt_fifo_out  => cnt_fifo_out,
 			 ack_fifo_out  => ack_fifo_out
 		 );       
-	uut: neuron
+	uut2: neuron
 	port map (
 			clk             => clk            ,
 			-- Control signals
@@ -162,8 +171,8 @@ begin
 			-- Address used for Read and Write
 			addr            => addr           ,
 			-- Ports for Write Enable
-			we_prev         => we_prev        ,
-			we_next         => we_next        ,
+			we_prev         => n0_we_prev     ,
+			we_next         => nN_we_next        ,
 			write_data      => write_data     ,
 			-- Data input, 2 bits
 			data_in         => data_in        ,
@@ -199,52 +208,24 @@ begin
 		-- reset component
 		reset       <= '1';
 		fsm_mode    <= '0';
-		wait for 1 ns;
-
+		wait for clk_period;
 
 		-- accu_mode
 		reset       <= '0';
+		fsm_mode    <= '1';
+		sh_data_in <= X"00000000";
+		wait for clk_period;
+		write_data <= std_logic_vector(to_unsigned(1, write_data'length));
+		sensor_we_valid <= '1';
+
+		wait for 1000*clk_period;
+
 		fsm_mode    <= '0';
-		wait for 1 ns;
+		wait for clk_period;
+		data_in <= std_logic_vector(to_unsigned(1, write_data'length));
+
+		wait for 1000*clk_period;
 		
-		-- data incoming accu_data
-		reset       <= '0';
-		sensor_we_valid <= '1';
-		wait for 2000 ns;
-
-		-- weight mode
-		reset       <= '0';
-		sensor_we_valid <= '0';
-		fsm_mode <= '1';
-		wait for 1 ns;
-
-		-- neuron is in weight mode
-		sensor_we_mode  <= '1';
-		fsm_mode <= '0';
-		reset       <= '0';
-		wait for 2 ns;
-
-		-- neuron has copied buffer
-		-- neuron shifted reg_config
-		sensor_copy <= '1';
-		sensor_we_shift <= '1';
-		sensor_we_mode  <= '0';
-		wait for 1 ns;
-
-		-- data is incoming
-		sensor_copy <= '0';
-		sensor_we_shift <= '0';
-		sensor_we_valid <= '1';
-		wait for 2000 ns;
-
-		-- mirror chain received shift
-		sensor_shift <= '1';
-		sensor_we_valid <= '0';
-		wait for 1 ns;
-
-		sensor_shift <= '0';
-		wait;
-
 	end process;
 
 END;
