@@ -6,6 +6,8 @@ use UNISIM.vcomponents.all;
 library UNIMACRO;
 use unimacro.Vcomponents.all;
 
+use ieee.numeric_std.all;
+
 -- entity declaration for your testbench.Dont declare any ports here
 ENTITY test_neuron IS 
 	END test_neuron;
@@ -66,12 +68,12 @@ ARCHITECTURE behavior OF test_neuron IS
 	-- Ports for Write Enable
 	signal we_prev      :   std_logic := '0';
 	signal we_next      :  std_logic := '0';
-	signal write_data   :  std_logic_vector(WWEIGHT-1 downto 0);
+	signal write_data   :  std_logic_vector(15 downto 0);
 	-- Data input, 2 bits
-	signal data_in         : in  std_logic_vector(WDATA-1 downto 0);
+	signal data_in         : std_logic_vector(15 downto 0);
 	-- Scan chain to extract values
-	signal sh_data_in      : in  std_logic_vector(WACCU-1 downto 0);
-	signal sh_data_out     : out std_logic_vector(WACCU-1 downto 0);
+	signal sh_data_in      : std_logic_vector(31 downto 0);
+	signal sh_data_out     : std_logic_vector(31 downto 0);
 	-- Sensors, for synchronization with the controller
 	signal sensor_shift    :  std_logic := '0';
 	signal sensor_copy     :  std_logic := '0';
@@ -79,21 +81,12 @@ ARCHITECTURE behavior OF test_neuron IS
 	signal sensor_we_shift :  std_logic := '0';
 	signal sensor_we_valid :  std_logic := '0';
 
-	-- clock period definitions
+	-- clock period definition
 	constant clk_period : time := 1 ns;
 
 begin
 	-- Instantiate the Unit Under Test (UUT)
 	uut: neuron
-	generic map (
-		-- Parameters for the neurons
-		WDATA   : natural := 16;
-		WWEIGHT : natural := 16;
-		WACCU   : natural := 32;
-		-- Parameters for the frame size
-		FSIZE   : natural := 784;
-		WADDR   : natural := 10
-		    )
 	port map (
 			 clk => clk         ,
 			 -- Control signals
@@ -118,7 +111,7 @@ begin
 			 sensor_copy => sensor_copy    ,
 			 sensor_we_mode => sensor_we_mode ,
 			 sensor_we_shift => sensor_we_shift,
-			 sensor_we_valid => sensor_we_valid,
+			 sensor_we_valid => sensor_we_valid
 		 );       
 
 
@@ -133,17 +126,80 @@ begin
 	-- Stimulus process
 	stim_proc: process
 	begin         
-		wait for 1 ns;
+		wait for clk_period;
 		ctrl_we_mode <= '1';
-		wait for 1 ns;
-		ctrl_we_mode <= '1';
-		wait for 2000 ns;
-		wait for 1 ns;
-		wait for 1 ns;
-		wait for 1 ns;
-		wait for 2000 ns;
-		wait for 1 ns;
+		sh_data_in <= X"00000000";
 
+		wait for clk_period;
+		ASSERT (sensor_we_mode = '1')
+			REPORT "SENSOR WE MODE != 1";
+		we_prev <= '1';
+		ctrl_we_shift <= '1';
+		ASSERT (sensor_we_shift = '1')
+			REPORT "SENSOR WE SHIFT != 1";
+
+		wait for clk_period;
+		we_prev <= '0';
+		ctrl_we_shift <= '0';
+		ctrl_we_valid <= '1';
+		ASSERT (sensor_we_shift = '0')
+			REPORT "SENSOR WE SHIFT != 0";
+
+		for I in 0 to 783 loop
+			addr <= std_logic_vector(to_unsigned(I, addr'length));
+			write_data <= std_logic_vector(to_unsigned(I mod 2, write_data'length));
+			wait for clk_period;
+		end loop;
+
+		ctrl_we_valid <= '0';
+		ctrl_we_shift <= '1';
+		we_prev <= '0';
+		ASSERT (we_next = '1')
+			REPORT "WE next != 1";
+
+		wait for clk_period;
+		ASSERT (sensor_we_shift = '1')
+			REPORT "SENSOR WE shift != 1";
+		ctrl_we_shift <= '0';
+
+		wait for clk_period;
+		wait for clk_period;
+		wait for clk_period;
+		ctrl_we_mode <= '0';
+
+		wait for clk_period;
+		ASSERT (sensor_we_mode = '0')
+			REPORT "SENSOR WE MODE != 0";
+		ctrl_accu_clear <= '1';
+
+		wait for clk_period;
+		ctrl_accu_clear <= '0';
+		ctrl_accu_add <= '1';
+		data_in <= X"0001";
+
+		for I in 0 to 783 loop
+			addr <= std_logic_vector(to_unsigned(I, addr'length));
+			wait for clk_period;
+		end loop;
+		
+		ctrl_accu_add <= '0';
+		ctrl_shift_copy <= '1';
+
+		wait for clk_period;
+		ASSERT (sensor_copy = '1')
+			REPORT "SENSOR cpy != 1";
+		ctrl_shift_copy <= '0';
+		ctrl_shift_en <= '1';
+		ASSERT (sh_data_out = 392)
+			REPORT "sh data out != 392";
+
+		wait for clk_period;
+		ASSERT (sensor_shift = '1')
+			REPORT "SENSOR shift != 1";
+		ctrl_shift_en <= '0';
+
+		wait for clk_period;
+		
 		wait;
 	end process;
 

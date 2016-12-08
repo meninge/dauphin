@@ -4,7 +4,6 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-use ieee.std_logic_unsigned.all;
 
 entity neuron is
 	generic (
@@ -52,9 +51,9 @@ architecture synth of neuron is
 	signal ram : ram_t := (others => (others => '0'));
 
 	-- Registre contenant l'accumulation du DSP
-	signal accu : std_logic_vector(47 downto 0);
+	signal accu : signed(47 downto 0);
 	-- Registre contenant la copy de l'accu
-	signal miroir : std_logic_vector(47 downto 0);
+	signal miroir : std_logic_vector(WACCU-1 downto 0);
 	-- TODO : miroir et accu sur 32 bits
 	
 	-- Registre mÃ©morisant si on se trouve dans un Ãtat de config
@@ -75,7 +74,7 @@ begin
 				-- data available on input
 				elsif (ctrl_accu_add = '1') then
 					if ((unsigned(addr) >= 0) and (unsigned(addr) < FSIZE)) then
-						accu <= accu + ("000000000"&data_in)*("00"&ram(to_integer(unsigned(addr))));
+						accu <= accu + signed(data_in)*signed(ram(to_integer(unsigned(addr))));
 					end if;
 				end if;
 			end if;
@@ -89,7 +88,7 @@ begin
 			if (ctrl_we_mode = '0') then
 				-- we have to copy the accu reg into the miroir reg
 				if (ctrl_shift_copy = '1') then
-					miroir <= accu;
+					miroir <= std_logic_vector(accu(WACCU-1 downto 0));
 				elsif (ctrl_shift_en = '1') then
 					-- we have to shift the miroir prev into the miroir next
 					miroir <= sh_data_in;
@@ -101,23 +100,29 @@ begin
 
 	sensor : process (ctrl_we_mode, ctrl_we_shift, ctrl_we_valid, ctrl_shift_copy, ctrl_shift_en)
 	begin 
+		-- updating the reg_conf
+		if (ctrl_we_shift = '1') then
+			-- notify the fsm
+			sensor_we_shift <= '1';
+		else 
+			sensor_we_shift <= '0';
+		end if;
 		if (ctrl_we_mode = '1') then
 			sensor_we_mode <= '1';
-			-- updating the reg_conf
-			if (ctrl_we_shift = '1') then
-				-- notify the fsm
-				sensor_we_shift <= '1';
-			end if;
-		elsif (ctrl_we_mode = '0') then
+		else
 			sensor_we_mode <= '0';
-			-- we have to copy the accu reg into the miroir reg
-			if (ctrl_shift_copy = '1') then
-				sensor_copy <= '1';
-			end if;
-			-- we have to shift the miroir prev into the miroir next
-			if (ctrl_shift_en = '1') then
-				sensor_shift <= '1';
-			end if;
+		end if;
+		-- we have to copy the accu reg into the miroir reg
+		if (ctrl_shift_copy = '1') then
+			sensor_copy <= '1';
+		else
+			sensor_copy <= '0';
+		end if;
+		-- we have to shift the miroir prev into the miroir next
+		if (ctrl_shift_en = '1') then
+			sensor_shift <= '1';
+		else 
+			sensor_shift <= '0';
 		end if;
 	end process sensor;
 
@@ -142,7 +147,7 @@ begin
 					-- our turn to get our config
 					if (unsigned(addr) >= 0 and unsigned(addr) < FSIZE) then
 						-- load all weight
-						ram(unsigned(addr)) <= write_data;
+						ram(to_integer(unsigned(addr))) <= write_data;
 					end if; 
 				end if;
 			end if;
