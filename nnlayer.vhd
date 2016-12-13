@@ -14,13 +14,14 @@ entity nnlayer is
 		-- Parameters for the neurons
 		WDATA   : natural := 16;
 		WWEIGHT : natural := 16;
-		WACCU   : natural := 32;
+		WACCU   : natural := 48;
 		-- Parameters for frame and number of neurons
 		FSIZE   : natural := 1000;
 		NBNEU   : natural := 1000
 	);
 	port (
 		clk            : in  std_logic;
+	-- reset
 		clear          : in  std_logic;
 		-- Ports for Write Enable
 		write_mode     : in  std_logic;
@@ -54,38 +55,54 @@ architecture synth of nnlayer is
 
 	-- Arrays of signals to instantiate the neurons
 	signal arr_write_data : std_logic_vector(NBNEU*WWEIGHT-1 downto 0) := (others => '0');
+	-- Input data
+	signal arr_data_in : std_logic_vector(NBNEU*WDATA-1 downto 0) := (others => '0');
 
 	-- Controls signals, go to every neuron through distribuf
-	signal sg_ctrl_we_mode : std_logic;
-	signal sg_ctrl_we_shift : std_logic;
-	signal sg_ctrl_we_valid : std_logic;
-	signal sg_ctrl_accu_clear : std_logic;
-	signal sg_ctrl_accu_add : std_logic;
-	signal sg_ctrl_shift_en : std_logic;
-	signal sg_ctrl_shift_copy : std_logic;
+	signal sg_ctrl_we_mode : std_logic_vector(0 downto 0);
+	signal sg_ctrl_we_shift : std_logic_vector(0 downto 0);
+	signal sg_ctrl_we_valid : std_logic_vector(0 downto 0);
+	signal sg_ctrl_accu_clear : std_logic_vector(0 downto 0);
+	signal sg_ctrl_accu_add : std_logic_vector(0 downto 0);
+	signal sg_ctrl_shift_en : std_logic_vector(0 downto 0);
+	signal sg_ctrl_shift_copy : std_logic_vector(0 downto 0);
 	-- Address signal
 	signal sg_addr : std_logic_vector(WADDR - 1 downto 0);
+
+	-- Corresponding arrays
+	signal arr_ctrl_we_mode : std_logic_vector(NBNEU - 1 downto 0) := (others => '0');
+	signal arr_ctrl_we_shift : std_logic_vector(NBNEU - 1 downto 0) := (others => '0');
+	signal arr_ctrl_we_valid : std_logic_vector(NBNEU - 1 downto 0) := (others => '0');
+	signal arr_ctrl_accu_clear : std_logic_vector(NBNEU - 1 downto 0) := (others => '0');
+	signal arr_ctrl_accu_add : std_logic_vector(NBNEU - 1 downto 0) := (others => '0');
+	signal arr_ctrl_shift_en : std_logic_vector(NBNEU - 1 downto 0) := (others => '0');
+	signal arr_ctrl_shift_copy : std_logic_vector(NBNEU - 1 downto 0) := (others => '0');
+	signal arr_addr : std_logic_vector(NBNEU * WADDR - 1 downto 0) := (others => '0');
 
 	-- Declaration of signal array to wire we_next and we_prev of every
 	-- neuron
 	-- We need 1 wire between two neurons and 2 more for first and last one.
-	-- Hence NB_NEU + 1 values.
-	type we_match_array is array (0 to NB_NEU) of std_logic;
+	-- Hence NBNEU + 1 values.
+	type match_array is array (0 to NBNEU) of std_logic;
 
-	signal we_match : we_match_array;
+	signal we_match : match_array;
 
-	-- Sensor signals
-	signal sg_sensor_shift : std_logic;
-	signal sg_sensor_copy : std_logic;
-	signal sg_sensor_we_mode : std_logic;
-	signal sg_sensor_we_shift : std_logic;
-	signal sg_sensor_we_valid : std_logic;
+	type match_array_waccu is array (0 to NBNEU) of std_logic_vector(WACCU - 1 downto 0);
+	-- Declaration of sh_data array with NBNEU wires
+	signal sh_data_match : match_array_waccu;
+
+	-- Declaration of sensor arrays
+	-- We use only the first one of this array
+	signal sensors_shift_match : match_array;
+	signal sensors_copy_match : match_array;
+	signal sensors_we_mode_match : match_array;
+	signal sensors_we_shift_match : match_array;
+	signal sensors_we_valid_match : match_array;
 
 	-- FIFO management signals
-	signal sg_ack_fifo_in : std_logic;
-	signal sg_cnt_fifo_in : std_logic;
-	signal sg_ack_fifo_out : std_logic;
-	signal sg_cnt_fifo_out : std_logic;
+	signal sg_in_fifo_out_ack : std_logic;
+	signal sg_out_fifo_in_ack : std_logic;
+	signal sg_out_fifo_in_cnt : std_logic_vector(15 downto 0);
 
 	-- Component declaration: one neuron
 	component neuron is
@@ -167,20 +184,18 @@ architecture synth of nnlayer is
 			sensor_copy     : in std_logic;
 			sensor_we_mode  : in std_logic;
 			sensor_we_shift : in std_logic;
-			sensor_we_valid : in std_logic
+			sensor_we_valid : in std_logic;
 
 			-- inputs
 			fsm_mode	: in std_logic;
 
 			-- input FIFO control
-			ack_fifo_in	: out std_logic;
-			cnt_fifo_in	: in std_logic_vector(WDATA-1 downto 0);
+			out_fifo_in_cnt : in std_logic_vector(WDATA-1 downto 0);
 			-- output FIFO control
-			ack_fifo_out	: out std_logic;
-			cnt_fifo_out	: in std_logic_vector(WDATA-1 downto 0)
+			out_fifo_in_ack : out std_logic
 
 		);
-	end fsm;
+	end component;
 
 	-- Component declaration: distribution tree to limit fanout
 	component distribuf is
@@ -217,6 +232,123 @@ begin
 			odata => arr_write_data
 		);
 
+	-- Fanout distribution tree: data_in
+	i_buf_data_in: distribuf
+		generic map (
+			WDATA  => WDATA,
+			NBOUT  => NBNEU,
+			FANOUT => FANOUT
+		)
+		port map (
+			clk   => clk,
+			idata => data_in,
+			odata => arr_data_in
+		);
+
+	-- ctrl_we_mode distribution tree
+	i_ctrl_we_mode: distribuf
+		generic map (
+			WDATA  => 1,
+			NBOUT  => NBNEU,
+			FANOUT => FANOUT
+		)
+		port map (
+			clk   => clk,
+			idata => sg_ctrl_we_mode,
+			odata => arr_ctrl_we_mode
+		);
+
+	-- ctrl_we_shift distribution tree
+	i_ctrl_we_shift: distribuf
+		generic map (
+			WDATA  => 1,
+			NBOUT  => NBNEU,
+			FANOUT => FANOUT
+		)
+		port map (
+			clk   => clk,
+			idata => sg_ctrl_we_shift,
+			odata => arr_ctrl_we_shift
+		);
+
+	-- ctrl_we_valid distribution tree
+	i_ctrl_we_valid: distribuf
+		generic map (
+			WDATA  => 1,
+			NBOUT  => NBNEU,
+			FANOUT => FANOUT
+		)
+		port map (
+			clk   => clk,
+			idata => sg_ctrl_we_valid,
+			odata => arr_ctrl_we_valid
+		);
+
+	-- ctrl_accu_clear distribution tree
+	i_ctrl_accu_clear: distribuf
+		generic map (
+			WDATA  => 1,
+			NBOUT  => NBNEU,
+			FANOUT => FANOUT
+		)
+		port map (
+			clk   => clk,
+			idata => sg_ctrl_accu_clear,
+			odata => arr_ctrl_accu_clear
+		);
+
+	-- ctrl_accu_add distribution tree
+	i_ctrl_accu_add: distribuf
+		generic map (
+			WDATA  => 1,
+			NBOUT  => NBNEU,
+			FANOUT => FANOUT
+		)
+		port map (
+			clk   => clk,
+			idata => sg_ctrl_accu_add,
+			odata => arr_ctrl_accu_add
+		);
+
+	-- ctrl_shift_en distribution tree
+	i_ctrl_shift_en: distribuf
+		generic map (
+			WDATA  => 1,
+			NBOUT  => NBNEU,
+			FANOUT => FANOUT
+		)
+		port map (
+			clk   => clk,
+			idata => sg_ctrl_shift_en,
+			odata => arr_ctrl_shift_en
+		);
+
+	-- ctrl_shift_copy distribution tree
+	i_ctrl_shift_copy: distribuf
+		generic map (
+			WDATA  => 1,
+			NBOUT  => NBNEU,
+			FANOUT => FANOUT
+		)
+		port map (
+			clk   => clk,
+			idata => sg_ctrl_shift_copy,
+			odata => arr_ctrl_shift_copy
+		);
+
+	-- we_mode distribution tree
+	i_addr: distribuf
+		generic map (
+			WDATA  => WADDR,
+			NBOUT  => NBNEU,
+			FANOUT => FANOUT
+		)
+		port map (
+			clk   => clk,
+			idata => sg_addr,
+			odata => arr_addr
+		);
+
 	-------------------------------------------------------------------
 	-- Instantiate the neurons
 	-------------------------------------------------------------------
@@ -235,29 +367,32 @@ begin
 			port map (
 				clk             => clk,
 				-- Control signals
-				ctrl_we_mode    => '0',
-				ctrl_we_shift   => '0',
-				ctrl_we_valid   => '0',
-				ctrl_accu_clear => '0',
-				ctrl_accu_add   => '0',
-				ctrl_shift_en   => '0',
-				ctrl_shift_copy => '0',
+				ctrl_we_mode    => arr_ctrl_we_mode(i),
+				ctrl_we_shift   => arr_ctrl_we_shift(i),
+				ctrl_we_valid   => arr_ctrl_we_valid(i),
+				ctrl_accu_clear => arr_ctrl_accu_clear(i),
+				ctrl_accu_add   => arr_ctrl_accu_add(i),
+				ctrl_shift_en   => arr_ctrl_shift_en(i),
+				ctrl_shift_copy => arr_ctrl_shift_copy(i),
 				-- Address used for Read and Write
-				addr            => (others => '0'),
+				addr            => arr_addr((i+1)*WWEIGHT-1 downto i*WWEIGHT),
 				-- Ports for Write Enable
 				we_prev         => we_match(i),
 				we_next         => we_match(i + 1),
-				write_data      => arr_write_data((i+1)*WWEIGHT-1 downto i*WWEIGHT),
+				write_data      => arr_write_data((i+1)*WADDR-1 downto i*WADDR),
 				-- Data input, 2 bits
-				data_in         => (others => '0'),
+				data_in         => arr_data_in((i+1)*WDATA-1 downto i*WDATA),
 				-- Scan chain to extract values
-				sh_data_in      => (others => '0'),
-				sh_data_out     => open,
+				-- Inversed from we_prev and we_next
+				sh_data_in      => sh_data_match(i),
+				sh_data_out     => sh_data_match(i + 1),
 				-- Sensors, for synchronization with the controller
-				sensor_shift    => open,
-				sensor_copy     => open,
-				sensor_we_mode  => open,
-				sensor_we_shift => open,
+				-- We use only the first (we suppose that synthesis will remove wires)
+				sensor_shift    => sensors_shift_match(i),
+				sensor_copy     => sensors_copy_match(i),
+				sensor_we_mode  => sensors_we_mode_match(i),
+				sensor_we_shift => sensors_we_shift_match(i),
+				-- Not used
 				sensor_we_valid => open
 			);
 	end generate;
@@ -275,41 +410,39 @@ begin
 			WADDR => WADDR
 		)
 		port map (
-			reset => reset,
+			reset => clear,
 			clk => clk,
-			ctrl_we_mode => sg_ctrl_we_mode,
-			ctrl_we_shift => sg_ctrl_we_shift,
-			ctrl_we_valid => sg_ctrl_we_valid,
-			ctrl_accu_clear => sg_ctrl_accu_clear,
-			ctrl_accu_add => sg_ctrl_accu_add,
-			ctrl_shift_en => sg_ctrl_shift_en,
-			ctrl_shift_copy => sg_ctrl_shift_copy,
+			ctrl_we_mode => sg_ctrl_we_mode(0),
+			ctrl_we_shift => sg_ctrl_we_shift(0),
+			ctrl_we_valid => sg_ctrl_we_valid(0),
+			ctrl_accu_clear => sg_ctrl_accu_clear(0),
+			ctrl_accu_add => sg_ctrl_accu_add(0),
+			ctrl_shift_en => sg_ctrl_shift_en(0),
+			ctrl_shift_copy => sg_ctrl_shift_copy(0),
 			addr => sg_addr,
 			n0_we_prev => we_match(0),
 			nN_we_next => we_match(NBNEU),
-			sensor_shift => sg_sensor_shift,
-			sensor_copy => sg_sensor_copy,
-			sensor_we_mode => sg_sensor_we_mode,
-			sensor_we_shift => sg_sensor_we_shift,
-			sensor_we_valid => sg_sensor_we_valid,
+			sensor_shift    => sensors_shift_match(0),
+			sensor_copy     => sensors_copy_match(0),
+			sensor_we_mode  => sensors_we_mode_match(0),
+			sensor_we_shift => sensors_we_shift_match(0),
+			--sensor_we_valid => write_enable,
+			sensor_we_valid => data_in_valid,
 			fsm_mode => write_mode,
-			ack_fifo_in => sg_ack_fifo_in,
-			cnt_fifo_in => sg_cnt_fifo_in,
-			ack_fifo_out => sg_ack_fifo_out,
-			cnt_fifo_out => sg_cnt_fifo_out
+			out_fifo_in_cnt => sg_out_fifo_in_cnt,
+			out_fifo_in_ack => sg_out_fifo_in_ack
 		);
 
-	-------------------------------------------------------------------
-	-- Dummy functionality
-	-------------------------------------------------------------------
+	--write_enable => sg_in_fifo_out_ready;
+	write_ready <= '0';
+	data_in_ready <= sg_ctrl_we_valid(0);
+	sg_out_fifo_in_cnt <= out_fifo_room;
 
-	write_ready    => sg_ack_fifo_in;
-	data_in_ready  => sg_ack_fifo_in;
-	out_fifo_room => sg_cnt_fifo_in;
 
-	data_out_valid <= sg_ack_fifo_out;
+	data_out <= sh_data_match(0);
+	sh_data_match(NBNEU) <= std_logic_vector(to_unsigned(0, sh_data_match(NBNEU)'length));
+	data_out_valid <= sg_out_fifo_in_ack;
 
-	data_out       <= (others => '0');
-	end_of_frame   <= '0';
+	end_of_frame <= '0';
 
 end architecture;

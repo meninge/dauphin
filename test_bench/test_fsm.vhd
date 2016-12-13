@@ -39,12 +39,9 @@ ARCHITECTURE behavior OF test_fsm IS
 
 			     -- inputs
 			     fsm_mode	: in std_logic;
-			     -- in FIFO
-			     cnt_fifo_in : in std_logic_vector(WDATA-1 downto 0);
-			     ack_fifo_in : out std_logic;
 			     -- out FIFO
-			     cnt_fifo_out  : in std_logic_vector(WDATA-1 downto 0);
-			     ack_fifo_out  : out std_logic;
+			     out_fifo_in_cnt  : in std_logic_vector(WDATA-1 downto 0);
+			     out_fifo_in_ack  : out std_logic;
 		     );
 	end component;
 	signal clk           :   std_logic := '0';
@@ -69,10 +66,8 @@ ARCHITECTURE behavior OF test_fsm IS
 	signal sensor_we_shift :  std_logic := '0';
 	signal sensor_we_valid :  std_logic := '0';
 
-	signal cnt_fifo_in : std_logic_vector(WDATA-1 downto 0);
-	signal ack_fifo_in : std_logic;
-	signal cnt_fifo_out  : std_logic_vector(WDATA-1 downto 0);
-	signal ack_fifo_out  : std_logic;
+	signal out_fifo_in_cnt  : std_logic_vector(WDATA-1 downto 0);
+	signal out_fifo_in_ack  : std_logic;
 
 	-- puts
 	signal fsm_mode	:  std_logic := '0';
@@ -109,11 +104,9 @@ begin
 			 sensor_we_valid => sensor_we_valid,
 			 -- inputs
 			 fsm_mode => fsm_mode
-			 -- in FIFO
-			 cnt_fifo_in => cnt_fifo_in,
-			 ack_fifo_in => ack_fifo_in,
-			 cnt_fifo_out  => cnt_fifo_out,
-			 ack_fifo_out  => ack_fifo_out
+			 -- out FIFO
+			 out_fifo_in_cnt  => out_fifo_in_cnt,
+			 out_fifo_in_ack  => out_fifo_in_ack
 		 );       
 
 

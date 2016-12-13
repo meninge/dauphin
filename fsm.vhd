@@ -47,12 +47,9 @@ entity fsm is
 		-- inputs
 		fsm_mode	: in std_logic;
 
-		-- input FIFO control
-		ack_fifo_in	: out std_logic;
-		cnt_fifo_in	: in std_logic_vector(WDATA-1 downto 0);
 		-- output FIFO control
-		ack_fifo_out	: out std_logic;
-		cnt_fifo_out	: in std_logic_vector(WDATA-1 downto 0)
+		out_fifo_in_ack: out std_logic;
+		out_fifo_in_cnt: in std_logic_vector(WDATA-1 downto 0)
 		
 	);
 end fsm;
@@ -75,6 +72,8 @@ architecture synth of fsm is
 
 	-- flag to signal mirror that it can do its things
 	signal flag_mirror_chain, next_flag_mirror_chain : std_logic;
+	signal first_neuron : std_logic := '0';
+	signal next_first_neuron : std_logic := '0';
 begin
 
 	------------------------
@@ -87,6 +86,7 @@ begin
 			if (reset = '1') then 
 				current_state_acc <= RESET_STATE;
 				current_state_mirror <= RESET_STATE;
+				first_neuron <= '0';
 			else
 				-- present = next variable
 				
@@ -101,6 +101,8 @@ begin
 				-- flag for mirror chain fsm
 				flag_mirror_chain <= next_flag_mirror_chain;
 
+				first_neuron <= next_first_neuron;
+
 			end if;
 		end if;
 	end process;
@@ -113,11 +115,10 @@ begin
 	-- La liste de sensibilite doit contenir tous les signaux sur les quels on fait des 'if' par exemple
 
 	-- process to handle classic neurons accumulation and weight loading
-	process (current_state_acc, sensor_we_mode, sensor_we_shift, sensor_we_valid, current_addr, nN_we_next)
+	process (current_state_acc, sensor_we_mode, sensor_we_shift, sensor_we_valid, current_addr, nN_we_next, fsm_mode)
 		-- variable var_doin    : std_logic := '0';
 	begin
 		-- need to set all signals at each step
-		ack_fifo_in <= '0';
 
 		case current_state_acc is
 			when RESET_STATE =>
@@ -148,6 +149,7 @@ begin
 				-- if neurons has got mode_switch signal
 				-- goes to NOTIFY1N
 				if (sensor_we_mode = '1') then
+					next_first_neuron <= '1';
 					next_state_acc <= NOTIFY_1N;
 				else
 					next_state_acc <= MODE_WEIGHT;
@@ -155,11 +157,9 @@ begin
 
 			when NOTIFY_1N =>
 				ctrl_we_mode <= '1';
-				ctrl_we_shift <= '1';
 				ctrl_we_valid <= '0';
 				ctrl_accu_clear <= '0';
 				ctrl_accu_add <= '0';
-				n0_we_prev <= '1';
 				addr <= current_addr; 
 				
 				next_addr <= (others => '0');
@@ -167,7 +167,20 @@ begin
 				-- init addr
 				next_addr <= (others => '0');
 
-				next_state_acc <= WAIT_NOTIFY;
+				if ( sensor_we_shift = '1') then
+					ctrl_we_shift <= '0';
+					next_state_acc <= WAIT_WEIGHT;
+					n0_we_prev <= '1';
+				else
+					if (first_neuron = '1') then
+						ctrl_we_shift <= '1';
+						next_first_neuron <= '0';
+						next_state_acc <= NOTIFY_1N;
+					else
+						ctrl_we_shift <= '0';
+						next_state_acc <= NOTIFY_1N;
+					end if;
+				end if;
 
 			when WAIT_NOTIFY =>
 				ctrl_we_mode <= '1';
@@ -201,11 +214,10 @@ begin
 				n0_we_prev <= '0';
 				addr <= current_addr; 
 
-				next_addr <= (others => '0');
+				next_addr <= current_addr;
 
 				if (sensor_we_valid = '1') then
 					next_state_acc <= SEND_WEIGHT;
-					ack_fifo_in <= '1';
 				else
 					next_state_acc <= WAIT_WEIGHT;
 				end if;
@@ -322,7 +334,6 @@ begin
 					
 				if ( sensor_we_valid = '1') then
 					next_state_acc <= SEND_DATA;
-					ack_fifo_in <= '1';
 				else
 					next_state_acc <= WAIT_DATA;
 				end if;
@@ -357,7 +368,7 @@ begin
 	process (current_state_mirror, current_shift_counter, sensor_shift, sensor_copy, flag_mirror_chain)
 	begin
 		-- signals that are just up for one cycle go there
-		ack_fifo_out <= '0';
+		out_fifo_in_ack <= '0';
 		case current_state_mirror is
 			when SHIFT_MODE =>
 				ctrl_shift_copy <= '0';
@@ -393,7 +404,7 @@ begin
 			when SHIFT =>
 				ctrl_shift_copy <= '0';
 				ctrl_shift_en <= '1';
-				ack_fifo_out <= '1';
+				out_fifo_in_ack <= '1';
 				-- loop until we emptied all neurons mirrors
 
 				next_shift_counter <= std_logic_vector( unsigned (current_shift_counter ) +1);
@@ -405,7 +416,7 @@ begin
 				end if;
 
 			when WAIT_SHIFT => 
-				-- TODO optimize with cnt_fifo_out
+				-- TODO optimize with out_fifo_in_cnt 
 				ctrl_shift_copy <= '0';
 				ctrl_shift_en<= '0';
 				next_shift_counter <= (others => '0');
