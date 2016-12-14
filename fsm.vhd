@@ -3,6 +3,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+use ieee.math_real.all;
 
 entity fsm is
 	generic (
@@ -14,7 +15,8 @@ entity fsm is
 		WACCU   : natural := 32;
 		-- Parameters for the frame size
 		FSIZE   : natural := 784;
-		WADDR   : natural := 10
+		WADDR   : natural := 10;
+		FANOUT  : natural := 2
 	);
 	port (
 		reset         : in  std_logic;
@@ -60,6 +62,9 @@ architecture synth of fsm is
 	WAIT_WEIGHT, SEND_WEIGHT, WAIT_DATA, END_ACC, SHIFT_NOTIFY, END_CONFIG, MODE_ACC, WAIT_1D, SEND_DATA, MODE_FSM,
        	SHIFT_MODE, SHIFT_CPY, SHIFT, WAIT_SHIFT_CPY, WAIT_SHIFT);
 	-- Internal signals
+	constant TMP_CST : integer := integer(( LOG( real(NB_NEURONS),real(FANOUT))));
+	constant MIN_OUT_FIFO_IN_CNT : unsigned := to_unsigned( TMP_CST, 32 )  + 1;
+	constant OUT_FIFO_MARGIN : unsigned := to_unsigned(2,32);
 
 	-- state of mirror FSM
 	signal current_state_mirror, next_state_mirror : STATE; 
@@ -425,7 +430,7 @@ begin
 				if (unsigned (current_shift_counter) = NB_NEURONS -1) then
 					next_state_mirror <= SHIFT_MODE;
 					ctrl_shift_en <= '1';
-				elsif ( unsigned(out_fifo_in_cnt) > 5 ) then
+				elsif ( unsigned(out_fifo_in_cnt) > MIN_OUT_FIFO_IN_CNT + OUT_FIFO_MARGIN) then
 					-- there is enough space in out_fifo
 					next_state_mirror <= SHIFT;
 					ctrl_shift_en <= '1';
@@ -434,18 +439,6 @@ begin
 					--next_state_mirror <= WAIT_SHIFT;
 					next_state_mirror <= SHIFT;
 				end if;
-
-			--when WAIT_SHIFT => 
-			--	-- TODO optimize with out_fifo_in_cnt 
-			--	ctrl_shift_copy <= '0';
-			--	ctrl_shift_en<= '0';
-			--	next_shift_counter <= current_shift_counter;
-
-			--	if (unsigned(out_fifo_in_cnt) > 5) then
-			--		next_state_mirror <= SHIFT;
-			--	else
-			--		next_state_mirror <= WAIT_SHIFT;
-			--	end if;
 			when others =>
 		end case;
 

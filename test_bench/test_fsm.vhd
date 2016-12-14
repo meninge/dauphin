@@ -41,7 +41,6 @@ ARCHITECTURE behavior OF test_fsm IS
 			     fsm_mode	: in std_logic;
 			     -- out FIFO
 			     out_fifo_in_cnt  : in std_logic_vector(WDATA-1 downto 0);
-			     out_fifo_in_ack  : out std_logic;
 		     );
 	end component;
 	signal clk           :   std_logic := '0';
@@ -67,7 +66,6 @@ ARCHITECTURE behavior OF test_fsm IS
 	signal sensor_we_valid :  std_logic := '0';
 
 	signal out_fifo_in_cnt  : std_logic_vector(WDATA-1 downto 0);
-	signal out_fifo_in_ack  : std_logic;
 
 	-- puts
 	signal fsm_mode	:  std_logic := '0';

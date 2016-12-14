@@ -123,7 +123,7 @@ begin
 	out_fifo_room_proc : process
 	begin
 		wait for clk_period;
-		out_fifo_room <= X"0006";
+		out_fifo_room <= X"0007";
 		wait for clk_period;
 		wait for clk_period;
 		out_fifo_room <= X"0002";

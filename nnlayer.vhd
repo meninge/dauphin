@@ -48,7 +48,7 @@ end nnlayer;
 architecture synth of nnlayer is
 
 	-- Max fanout for signals distributed to all BRAM-based blocks
-	constant FANOUT : natural := 2;
+	constant FANOUT : natural := 4;
 
 	-- The address to access neuron memory, read and write
 	constant WADDR : natural := 16;
