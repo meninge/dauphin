@@ -13,7 +13,7 @@ entity fsm is
 		WWEIGHT : natural := 16;
 		WACCU   : natural := 32;
 		-- Parameters for the frame size
-		FSIZE   : natural := 1000;
+		FSIZE   : natural := 784;
 		WADDR   : natural := 10
 	);
 	port (
@@ -48,7 +48,7 @@ entity fsm is
 		fsm_mode	: in std_logic;
 
 		-- output FIFO control
-		out_fifo_in_ack: out std_logic;
+		--out_fifo_in_ack: out std_logic;
 		out_fifo_in_cnt: in std_logic_vector(WDATA-1 downto 0)
 		
 	);
@@ -57,7 +57,7 @@ end fsm;
 architecture synth of fsm is
 
 	type STATE is (RESET_STATE, MODE_WEIGHT, NOTIFY_1N, WAIT_NOTIFY, 
-	WAIT_WEIGHT, SEND_WEIGHT, WAIT_DATA, END_ACC, SHIFT_NOTIFY, END_CONFIG, MODE_ACC, WAIT_1D, SEND_DATA,
+	WAIT_WEIGHT, SEND_WEIGHT, WAIT_DATA, END_ACC, SHIFT_NOTIFY, END_CONFIG, MODE_ACC, WAIT_1D, SEND_DATA, MODE_FSM,
        	SHIFT_MODE, SHIFT_CPY, SHIFT, WAIT_SHIFT_CPY, WAIT_SHIFT);
 	-- Internal signals
 
@@ -85,8 +85,9 @@ begin
 		if rising_edge(clk) then
 			if (reset = '1') then 
 				current_state_acc <= RESET_STATE;
-				current_state_mirror <= RESET_STATE;
+				current_state_mirror <= SHIFT_MODE;
 				first_neuron <= '0';
+				--next_flag_mirror_chain <= '0';
 			else
 				-- present = next variable
 				
@@ -115,7 +116,7 @@ begin
 	-- La liste de sensibilite doit contenir tous les signaux sur les quels on fait des 'if' par exemple
 
 	-- process to handle classic neurons accumulation and weight loading
-	process (current_state_acc, sensor_we_mode, sensor_we_shift, sensor_we_valid, current_addr, nN_we_next, fsm_mode)
+	process (current_state_acc, sensor_we_mode, sensor_we_shift, sensor_we_valid, current_addr, nN_we_next, fsm_mode, first_neuron)
 		-- variable var_doin    : std_logic := '0';
 	begin
 		-- need to set all signals at each step
@@ -133,7 +134,7 @@ begin
 				next_addr <= (others => '0');
 
 				-- in case of reset, fsm goes to MODE_ACC 
-				next_state_acc <= END_ACC;
+				next_state_acc <= MODE_FSM;
 
 			when MODE_WEIGHT =>
 				ctrl_we_mode <= '1';
@@ -170,10 +171,10 @@ begin
 				if ( sensor_we_shift = '1') then
 					ctrl_we_shift <= '0';
 					next_state_acc <= WAIT_WEIGHT;
-					n0_we_prev <= '1';
 				else
 					if (first_neuron = '1') then
 						ctrl_we_shift <= '1';
+						n0_we_prev <= '1';
 						next_first_neuron <= '0';
 						next_state_acc <= NOTIFY_1N;
 					else
@@ -265,8 +266,7 @@ begin
 
 				next_addr <= (others => '0');
 					
-				next_state_acc <= WAIT_NOTIFY;
-
+				next_state_acc <= MODE_FSM;
 
 			when MODE_ACC => 
 			-- we need to switch to weight mode if C program said so
@@ -354,11 +354,24 @@ begin
 					
 				-- mode switching before
 				-- going again in acc loop again 
+				next_state_acc <= MODE_FSM;
+			when MODE_FSM=> 
+				ctrl_we_mode <= '0';
+				ctrl_we_shift <= '0';
+				ctrl_we_valid <= '0';
+				ctrl_accu_clear <= '0';
+				ctrl_accu_add <= '0';
+				n0_we_prev <= '0';
+				addr <= current_addr;
+				next_flag_mirror_chain <= '0';
+
+				next_addr <= current_addr;
 				if (fsm_mode = '1') then
 					next_state_acc <= MODE_WEIGHT;
 				else
-					next_state_acc <= WAIT_1D;
+					next_state_acc <= MODE_ACC;
 				end if;
+
 			when others =>
 		end case;
 
@@ -368,7 +381,7 @@ begin
 	process (current_state_mirror, current_shift_counter, sensor_shift, sensor_copy, flag_mirror_chain)
 	begin
 		-- signals that are just up for one cycle go there
-		out_fifo_in_ack <= '0';
+		--out_fifo_in_ack <= '0';
 		case current_state_mirror is
 			when SHIFT_MODE =>
 				ctrl_shift_copy <= '0';
@@ -376,7 +389,7 @@ begin
 				next_shift_counter <= (others => '0');
 
 				if (flag_mirror_chain = '1') then
-					next_flag_mirror_chain <= '0';
+					--next_flag_mirror_chain <= '0';
 					next_state_mirror <= SHIFT_CPY;
 				else
 					next_state_mirror <= SHIFT_MODE;
@@ -403,29 +416,36 @@ begin
 
 			when SHIFT =>
 				ctrl_shift_copy <= '0';
-				ctrl_shift_en <= '1';
-				out_fifo_in_ack <= '1';
+				--out_fifo_in_ack <= '1';
+				ctrl_shift_en <= '0';
 				-- loop until we emptied all neurons mirrors
+				next_shift_counter <= current_shift_counter;
 
-				next_shift_counter <= std_logic_vector( unsigned (current_shift_counter ) +1);
 
 				if (unsigned (current_shift_counter) = NB_NEURONS -1) then
 					next_state_mirror <= SHIFT_MODE;
+					ctrl_shift_en <= '1';
+				elsif ( unsigned(out_fifo_in_cnt) > 5 ) then
+					-- there is enough space in out_fifo
+					next_state_mirror <= SHIFT;
+					ctrl_shift_en <= '1';
+					next_shift_counter <= std_logic_vector( unsigned (current_shift_counter ) +1);
 				else
+					--next_state_mirror <= WAIT_SHIFT;
 					next_state_mirror <= SHIFT;
 				end if;
 
-			when WAIT_SHIFT => 
-				-- TODO optimize with out_fifo_in_cnt 
-				ctrl_shift_copy <= '0';
-				ctrl_shift_en<= '0';
-				next_shift_counter <= (others => '0');
+			--when WAIT_SHIFT => 
+			--	-- TODO optimize with out_fifo_in_cnt 
+			--	ctrl_shift_copy <= '0';
+			--	ctrl_shift_en<= '0';
+			--	next_shift_counter <= current_shift_counter;
 
-				if (sensor_shift = '1') then
-					next_state_mirror <= SHIFT;
-				else
-					next_state_mirror <= WAIT_SHIFT;
-				end if;
+			--	if (unsigned(out_fifo_in_cnt) > 5) then
+			--		next_state_mirror <= SHIFT;
+			--	else
+			--		next_state_mirror <= WAIT_SHIFT;
+			--	end if;
 			when others =>
 		end case;
 

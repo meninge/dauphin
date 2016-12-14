@@ -17,9 +17,9 @@ ARCHITECTURE behavior OF test_nnlayer IS
 		-- Parameters for the neurons
 	constant WDATA   : natural := 16;
 	constant WWEIGHT : natural := 16;
-	constant WACCU   : natural := 32;
+	constant WACCU   : natural := 48;
 	-- Parameters for frame and number of neurons
-	constant FSIZE   : natural := 1000;
+	constant FSIZE   : natural := 784;
 	constant NBNEU   : natural := 10;
 	component nnlayer is
 	generic (
@@ -69,7 +69,6 @@ ARCHITECTURE behavior OF test_nnlayer IS
 		-- The user-specified frame size and number of neurons
 	signal user_fsize     : std_logic_vector(15 downto 0);
 	signal user_nbneu     : std_logic_vector(15 downto 0);
-		-- Data input, 2 bits
 	signal data_in        : std_logic_vector(WDATA-1 downto 0);
 	signal data_in_valid  : std_logic := '0';
 	signal data_in_ready  : std_logic := '0';
@@ -80,9 +79,8 @@ ARCHITECTURE behavior OF test_nnlayer IS
 	signal end_of_frame   : std_logic := '0';
 		-- The output data enters a FIFO. This indicates the available room.
 	signal out_fifo_room  : std_logic_vector(15 downto 0);
-
 begin
-	-- Instantiate the Unit Under Test (UUT)
+	-- Instantiate the Uni../recode.vhd:12:t Under Test (UUT)
 	uut: nnlayer
 	port map (
 		clk => clk,
@@ -122,10 +120,20 @@ begin
 	--	init_signal_spy("/test_nnlayer/uut/fsm_gen/sensor_we_mode","sensor_we_mode",1,-1);
 	--end process;
 	-- Stimulus process
+	out_fifo_room_proc : process
+	begin
+		wait for clk_period;
+		out_fifo_room <= X"0006";
+		wait for clk_period;
+		wait for clk_period;
+		out_fifo_room <= X"0002";
+	end process;
+
 	stim_proc: process
 		variable counter : integer := 0;
 		variable neurons : integer := 0;
 	begin         
+		-- TEST CHARGEMENT DES POIDS
 		-- reset
 		clear <= '1';
 		wait for 3*clk_period;
@@ -134,7 +142,6 @@ begin
 		write_data <= X"0001";
 
 		write_mode <= '1'; -- load weights
-		write_enable <= '1'; -- correspond to FIFO_in_ACK
 		data_in_valid <= '1'; -- data is in FIFO
 
 		-- while (.fsm_gen.sensor_we_mode = 0) loop
@@ -146,9 +153,13 @@ begin
 		-- end loop;
 
 		wait for 9 * clk_period;
+		write_mode <= '0'; -- accu add 
+		data_in <= X"0001";
 
-		while neurons < 10 loop
-			while (counter < 1000 ) loop
+		while neurons < NBNEU loop
+			counter := 0;
+			write_data <= std_logic_vector(to_unsigned((neurons) mod 2 +1, write_data'length));
+			while (counter < FSIZE) loop
 				wait for clk_period;
 				ASSERT ( data_in_ready = '1')
 				REPORT "data_in_ready != 1";
@@ -159,12 +170,22 @@ begin
 			wait for 10 * clk_period;
 		end loop;
 
+	
 
-		write_data <= X"0001";
 
-		write_mode <= '0'; -- accu add 
-		write_enable <= '1'; -- correspond to FIFO_in_ACK
+		-- TEST MODE ACCUMULATION 
+		write_data <= X"0000";
+
 		data_in_valid <= '1'; -- data is in FIFO
+
+		counter := 0;
+		while (counter < FSIZE) loop
+			wait for clk_period;
+			ASSERT ( data_in_ready = '1')
+			REPORT "data_in_ready != 1";
+			counter := counter + 1;
+			wait for clk_period;
+		end loop;
 
 		ASSERT ( data_in_ready = '1')
 			REPORT "data_in_ready != 1";

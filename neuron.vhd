@@ -10,7 +10,7 @@ entity neuron is
 		-- Parameters for the neurons
 		WDATA   : natural := 16;
 		WWEIGHT : natural := 16;
-		WACCU   : natural := 32;
+		WACCU   : natural := 48;
 		-- Parameters for the frame size
 		FSIZE   : natural := 784;
 		WADDR   : natural := 10
@@ -51,10 +51,8 @@ architecture synth of neuron is
 	signal ram : ram_t := (others => (others => '0'));
 
 	-- Registre contenant l'accumulation du DSP
-	signal accu : signed(47 downto 0);
+	signal accu : signed(WACCU-1 downto 0) := (others => '0');
 	-- Registre contenant la copy de l'accu
-	signal miroir : std_logic_vector(WACCU-1 downto 0);
-	-- TODO : miroir et accu sur 32 bits
 	
 	-- Registre m√©morisant si on se trouve dans un √tat de config
 	signal reg_config : std_logic;
@@ -81,23 +79,19 @@ begin
 		end if;
 	end process mac;
 
-	shift : process (clk, ctrl_we_mode, ctrl_shift_en, ctrl_shift_copy)
+	shift: process (clk,ctrl_shift_copy, ctrl_shift_en)
 	begin 
-		if rising_edge(clk) then
-			-- Mode shift des data dans la chaine de miroirs
-			if (ctrl_we_mode = '0') then
-				-- we have to copy the accu reg into the miroir reg
-				if (ctrl_shift_copy = '1') then
-					miroir <= std_logic_vector(accu(WACCU-1 downto 0));
-				elsif (ctrl_shift_en = '1') then
-					-- we have to shift the miroir prev into the miroir next
-					sh_data_out <= miroir;
-					miroir <= sh_data_in;
-				end if;
+		if (rising_edge(clk)) then
+			-- we have to copy the accu reg into the miroir reg
+			if ((ctrl_shift_copy = '1')) then
+				sh_data_out <= std_logic_vector(accu(WACCU-1 downto 0));
+			elsif (ctrl_shift_en = '1') then
+				-- we have to shift the miroir prev into the miroir next
+				sh_data_out <= sh_data_in;
 			end if;
 		end if;
-		--sh_data_out <= miroir;
-	end process ;
+	end process;
+
 
 	sensor : process (ctrl_we_mode, ctrl_we_shift, ctrl_we_valid, ctrl_shift_copy, ctrl_shift_en)
 	begin 
@@ -132,12 +126,14 @@ begin
 		if rising_edge(clk) then
 			if (ctrl_we_mode = '1') and (ctrl_we_shift = '1') then
 				-- update the reg_config
-				we_next <= reg_config;
+				--we_next <= reg_config;
 				reg_config <= we_prev;
+				we_next <= we_prev;
 			end if;
 				
 		end if;
-		--we_next <= reg_config;
+		-- we_next <= reg_config;
+		
 	end process reg_conf;
 
 	load_weight : process (clk, ctrl_we_mode, ctrl_we_shift, reg_config, ctrl_we_valid)

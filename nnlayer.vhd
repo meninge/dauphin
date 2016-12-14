@@ -16,8 +16,8 @@ entity nnlayer is
 		WWEIGHT : natural := 16;
 		WACCU   : natural := 48;
 		-- Parameters for frame and number of neurons
-		FSIZE   : natural := 1000;
-		NBNEU   : natural := 1000
+		FSIZE   : natural := 784;
+		NBNEU   : natural := 200
 	);
 	port (
 		clk            : in  std_logic;
@@ -101,7 +101,7 @@ architecture synth of nnlayer is
 
 	-- FIFO management signals
 	signal sg_in_fifo_out_ack : std_logic;
-	signal sg_out_fifo_in_ack : std_logic;
+	--signal sg_out_fifo_in_ack : std_logic;
 	signal sg_out_fifo_in_cnt : std_logic_vector(15 downto 0);
 
 	-- Component declaration: one neuron
@@ -110,9 +110,9 @@ architecture synth of nnlayer is
 			-- Parameters for the neurons
 			WDATA   : natural := 16;
 			WWEIGHT : natural := 16;
-			WACCU   : natural := 32;
+			WACCU   : natural := 48;
 			-- Parameters for the frame size
-			FSIZE   : natural := 1000;
+			FSIZE   : natural := 784;
 			WADDR   : natural := 10
 		);
 		port (
@@ -153,9 +153,9 @@ architecture synth of nnlayer is
 			-- parameters of a neuron
 			WDATA   : natural := 16;
 			WWEIGHT : natural := 16;
-			WACCU   : natural := 32;
+			WACCU   : natural := 48;
 			-- Parameters for the frame size
-			FSIZE   : natural := 1000;
+			FSIZE   : natural := 784;
 			WADDR   : natural := 10
 		);
 		port (
@@ -190,9 +190,9 @@ architecture synth of nnlayer is
 			fsm_mode	: in std_logic;
 
 			-- input FIFO control
-			out_fifo_in_cnt : in std_logic_vector(WDATA-1 downto 0);
+			out_fifo_in_cnt : in std_logic_vector(WDATA-1 downto 0)
 			-- output FIFO control
-			out_fifo_in_ack : out std_logic
+			--out_fifo_in_ack : out std_logic
 
 		);
 	end component;
@@ -384,8 +384,8 @@ begin
 				data_in         => arr_data_in((i+1)*WDATA-1 downto i*WDATA),
 				-- Scan chain to extract values
 				-- Inversed from we_prev and we_next
-				sh_data_in      => sh_data_match(i),
-				sh_data_out     => sh_data_match(i + 1),
+				sh_data_in      => sh_data_match(i+1),
+				sh_data_out     => sh_data_match(i),
 				-- Sensors, for synchronization with the controller
 				-- We use only the first (we suppose that synthesis will remove wires)
 				sensor_shift    => sensors_shift_match(i),
@@ -429,8 +429,8 @@ begin
 			--sensor_we_valid => write_enable,
 			sensor_we_valid => data_in_valid,
 			fsm_mode => write_mode,
-			out_fifo_in_cnt => sg_out_fifo_in_cnt,
-			out_fifo_in_ack => sg_out_fifo_in_ack
+			out_fifo_in_cnt => sg_out_fifo_in_cnt
+			--out_fifo_in_ack => sg_out_fifo_in_ack
 		);
 
 	--write_enable => sg_in_fifo_out_ready;
@@ -441,7 +441,8 @@ begin
 
 	data_out <= sh_data_match(0);
 	sh_data_match(NBNEU) <= std_logic_vector(to_unsigned(0, sh_data_match(NBNEU)'length));
-	data_out_valid <= sg_out_fifo_in_ack;
+	--data_out_valid <= sg_out_fifo_in_ack;
+	data_out_valid <= sensors_shift_match(0);
 
 	end_of_frame <= '0';
 

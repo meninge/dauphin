@@ -9,7 +9,7 @@ entity recode is
 	generic(
 		WDATA : natural := 16;
 		WOUT  : natural := 16;
-		FSIZE : natural := 1000
+		FSIZE : natural := 784
 	);
 	port(
 		clk             : in  std_logic;
