@@ -11,6 +11,7 @@ ENTITY test_fsm IS
 	END test_fsm;
 
 ARCHITECTURE behavior OF test_fsm IS
+	constant WDATA : natural := 32;
 	-- add component under test
 	component fsm
 		generic ( NB_NEURONS : natural);
@@ -40,7 +41,7 @@ ARCHITECTURE behavior OF test_fsm IS
 			     -- inputs
 			     fsm_mode	: in std_logic;
 			     -- out FIFO
-			     out_fifo_in_cnt  : in std_logic_vector(WDATA-1 downto 0);
+			     out_fifo_in_cnt  : in std_logic_vector(15 downto 0)
 		     );
 	end component;
 	signal clk           :   std_logic := '0';
@@ -65,7 +66,7 @@ ARCHITECTURE behavior OF test_fsm IS
 	signal sensor_we_shift :  std_logic := '0';
 	signal sensor_we_valid :  std_logic := '0';
 
-	signal out_fifo_in_cnt  : std_logic_vector(WDATA-1 downto 0);
+	signal out_fifo_in_cnt  : std_logic_vector(15 downto 0);
 
 	-- puts
 	signal fsm_mode	:  std_logic := '0';
@@ -101,10 +102,9 @@ begin
 			 sensor_we_shift => sensor_we_shift,
 			 sensor_we_valid => sensor_we_valid,
 			 -- inputs
-			 fsm_mode => fsm_mode
+			 fsm_mode => fsm_mode,
 			 -- out FIFO
-			 out_fifo_in_cnt  => out_fifo_in_cnt,
-			 out_fifo_in_ack  => out_fifo_in_ack
+			 out_fifo_in_cnt  => out_fifo_in_cnt
 		 );       
 
 

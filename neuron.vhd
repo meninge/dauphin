@@ -8,16 +8,16 @@ use ieee.numeric_std.all;
 entity neuron is
 	generic (
 		-- Parameters for the neurons
-		WDATA   : natural := 16;
-		WWEIGHT : natural := 16;
-		WACCU   : natural := 48;
+		WDATA   : natural := 32;
+		WWEIGHT : natural := 32;
+		WACCU   : natural := 32;
 		-- Parameters for the frame size
 		FSIZE   : natural := 784;
 		WADDR   : natural := 10
 	);
 	port (
 		clk             : in  std_logic;
-		-- Control signals
+		-- Control signals, test
 		ctrl_we_mode    : in  std_logic;
 		ctrl_we_shift   : in  std_logic;
 		ctrl_we_valid   : in  std_logic;
@@ -51,7 +51,7 @@ architecture synth of neuron is
 	signal ram : ram_t := (others => (others => '0'));
 
 	-- Registre contenant l'accumulation du DSP
-	signal accu : signed(WACCU-1 downto 0) := (others => '0');
+	signal accu : signed(47 downto 0) := (others => '0');
 	-- Registre contenant la copy de l'accu
 	
 	-- Registre mÃ©morisant si on se trouve dans un Ãtat de config
@@ -72,7 +72,7 @@ begin
 				-- data available on input
 				elsif (ctrl_accu_add = '1') then
 					if ((unsigned(addr) >= 0) and (unsigned(addr) < FSIZE)) then
-						accu <= accu + signed(data_in)*signed(ram(to_integer(unsigned(addr))));
+						accu <= accu + signed(data_in(24 downto 0))*("00"&signed(ram(to_integer(unsigned(addr)))));
 					end if;
 				end if;
 			end if;
@@ -145,7 +145,7 @@ begin
 					-- our turn to get our config
 					if (unsigned(addr) >= 0 and unsigned(addr) < FSIZE) then
 						-- load all weight
-						ram(to_integer(unsigned(addr))) <= write_data;
+						ram(to_integer(unsigned(addr))) <= write_data(15 downto 0);
 					end if; 
 				end if;
 			end if;

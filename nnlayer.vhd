@@ -17,7 +17,9 @@ entity nnlayer is
 		WACCU   : natural := 48;
 		-- Parameters for frame and number of neurons
 		FSIZE   : natural := 784;
-		NBNEU   : natural := 200
+		NBNEU   : natural := 200;
+		-- fifo count
+		CNTW : natural := 16
 	);
 	port (
 		clk            : in  std_logic;
@@ -41,7 +43,7 @@ entity nnlayer is
 		-- Indicate to the parent component that we are reaching the end of the current frame
 		end_of_frame   : out std_logic;
 		-- The output data enters a FIFO. This indicates the available room.
-		out_fifo_room  : in  std_logic_vector(15 downto 0)
+		out_fifo_room  : in  std_logic_vector(CNTW - 1 downto 0)
 	);
 end nnlayer;
 
@@ -51,7 +53,7 @@ architecture synth of nnlayer is
 	constant FANOUT : natural := 4;
 
 	-- The address to access neuron memory, read and write
-	constant WADDR : natural := 16;
+	constant WADDR : natural := 10;
 
 	-- Arrays of signals to instantiate the neurons
 	signal arr_write_data : std_logic_vector(NBNEU*WWEIGHT-1 downto 0) := (others => '0');
@@ -102,15 +104,15 @@ architecture synth of nnlayer is
 	-- FIFO management signals
 	signal sg_in_fifo_out_ack : std_logic;
 	--signal sg_out_fifo_in_ack : std_logic;
-	signal sg_out_fifo_in_cnt : std_logic_vector(15 downto 0);
+	signal sg_out_fifo_in_cnt : std_logic_vector(CNTW - 1 downto 0);
 
 	-- Component declaration: one neuron
 	component neuron is
 		generic (
 			-- Parameters for the neurons
-			WDATA   : natural := 16;
-			WWEIGHT : natural := 16;
-			WACCU   : natural := 48;
+			WDATA   : natural := 32;
+			WWEIGHT : natural := 32;
+			WACCU   : natural := 32;
 			-- Parameters for the frame size
 			FSIZE   : natural := 784;
 			WADDR   : natural := 10
@@ -190,7 +192,7 @@ architecture synth of nnlayer is
 			fsm_mode	: in std_logic;
 
 			-- input FIFO control
-			out_fifo_in_cnt : in std_logic_vector(WDATA-1 downto 0)
+			out_fifo_in_cnt : in std_logic_vector(CNTW-1 downto 0)
 			-- output FIFO control
 			--out_fifo_in_ack : out std_logic
 
@@ -375,11 +377,11 @@ begin
 				ctrl_shift_en   => arr_ctrl_shift_en(i),
 				ctrl_shift_copy => arr_ctrl_shift_copy(i),
 				-- Address used for Read and Write
-				addr            => arr_addr((i+1)*WWEIGHT-1 downto i*WWEIGHT),
+				addr            => arr_addr((i+1)*WADDR-1 downto i*WADDR),
 				-- Ports for Write Enable
 				we_prev         => we_match(i),
 				we_next         => we_match(i + 1),
-				write_data      => arr_write_data((i+1)*WADDR-1 downto i*WADDR),
+				write_data      => arr_write_data((i+1)*WWEIGHT-1 downto i*WWEIGHT),
 				-- Data input, 2 bits
 				data_in         => arr_data_in((i+1)*WDATA-1 downto i*WDATA),
 				-- Scan chain to extract values

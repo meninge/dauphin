@@ -224,18 +224,18 @@ architecture arch_imp of myaxifullmaster_v1_0_S00_AXI is
 	-- Definitions for the neural network
 	----------------------------------------------------
 
-	constant LAYER1_WDATA   : natural := 16;
-	constant LAYER1_WWEIGHT : natural := 16;
+	constant LAYER1_WDATA   : natural := 32;
+	constant LAYER1_WWEIGHT : natural := 32;
 	constant LAYER1_WACCU   : natural := 32;
-	constant LAYER1_FSIZE   : natural := 1000;
-	constant LAYER1_NBNEU   : natural := 100;
+	constant LAYER1_FSIZE   : natural := 784;
+	constant LAYER1_NBNEU   : natural := 200;
 
 	constant RECODE_WDATA   : natural := LAYER1_WACCU;
-	constant RECODE_WOUT    : natural := LAYER1_WACCU;
+	constant RECODE_WOUT    : natural := 32;
 	constant RECODE_FSIZE   : natural := LAYER1_NBNEU;
 
 	constant LAYER2_WDATA   : natural := RECODE_WOUT;
-	constant LAYER2_WWEIGHT : natural := 16;
+	constant LAYER2_WWEIGHT : natural := 32;
 	constant LAYER2_WACCU   : natural := 32;
 	constant LAYER2_FSIZE   : natural := LAYER1_NBNEU;
 	constant LAYER2_NBNEU   : natural := 10;
@@ -296,7 +296,7 @@ architecture arch_imp of myaxifullmaster_v1_0_S00_AXI is
 			-- Parameters for the neurons
 			WDATA   : natural := 16;
 			WWEIGHT : natural := 16;
-			WACCU   : natural := 32;
+			WACCU   : natural := 48;
 			-- Parameters for frame and number of neurons
 			FSIZE   : natural := 1000;
 			NBNEU   : natural := 1000
@@ -329,9 +329,9 @@ architecture arch_imp of myaxifullmaster_v1_0_S00_AXI is
 	-- The component to recode neuron outputs
 	component recode is
 		generic(
-			WDATA : natural := 16;
-			WOUT  : natural := 16;
-			FSIZE : natural := 1000
+			WDATA : natural;
+			WOUT  : natural;
+			FSIZE : natural
 		);
 		port(
 			clk             : in  std_logic;
@@ -339,7 +339,7 @@ architecture arch_imp of myaxifullmaster_v1_0_S00_AXI is
 			addr_clear      : in  std_logic;
 			-- Ports for Write into memory
 			write_mode      : in  std_logic;
-			write_data      : in  std_logic_vector(31 downto 0);
+			write_data      : in  std_logic_vector(WDATA - 1 downto 0);
 			write_enable    : in  std_logic;
 			write_ready     : out std_logic;
 			-- The user-specified number of neurons
@@ -397,7 +397,7 @@ architecture arch_imp of myaxifullmaster_v1_0_S00_AXI is
 	-- Signals to instantiate recoding between levels 1 and 2
 	signal inst_recode_addr_clear      : std_logic;
 	signal inst_recode_write_mode      : std_logic;
-	signal inst_recode_write_data      : std_logic_vector(31 downto 0);
+	signal inst_recode_write_data      : std_logic_vector(LAYER1_WACCU - 1 downto 0);
 	signal inst_recode_write_enable    : std_logic;
 	signal inst_recode_write_ready     : std_logic;
 	signal inst_recode_user_nbneu      : std_logic_vector(15 downto 0);

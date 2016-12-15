@@ -12,11 +12,13 @@ entity fsm is
 		-- parameters of a neuron
 		WDATA   : natural := 16;
 		WWEIGHT : natural := 16;
-		WACCU   : natural := 32;
+		WACCU   : natural := 48;
 		-- Parameters for the frame size
 		FSIZE   : natural := 784;
 		WADDR   : natural := 10;
-		FANOUT  : natural := 2
+		FANOUT  : natural := 2;
+		-- fifo count
+		CNTW : natural := 16
 	);
 	port (
 		reset         : in  std_logic;
@@ -51,7 +53,7 @@ entity fsm is
 
 		-- output FIFO control
 		--out_fifo_in_ack: out std_logic;
-		out_fifo_in_cnt: in std_logic_vector(WDATA-1 downto 0)
+		out_fifo_in_cnt: in std_logic_vector(CNTW-1 downto 0)
 		
 	);
 end fsm;
