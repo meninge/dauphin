@@ -380,6 +380,7 @@ begin
 				end if;
 
 			when others =>
+				next_state_acc <= RESET_STATE;
 		end case;
 
 	end process;
@@ -442,6 +443,7 @@ begin
 					next_state_mirror <= SHIFT;
 				end if;
 			when others =>
+				next_state_mirror <= SHIFT_MODE;
 		end case;
 
 	end process; 
