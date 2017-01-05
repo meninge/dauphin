@@ -14,8 +14,8 @@ ARCHITECTURE behavior OF test_recode IS
 	-- add component under test
 	component recode 
 	generic(
-		WDATA : natural := 16;
-		WOUT  : natural := 16;
+		WDATA : natural := 32;
+		WOUT  : natural := 32;
 		FSIZE : natural := 10 -- warning, this is NB_NEU
 	);
 	port(
@@ -41,8 +41,8 @@ ARCHITECTURE behavior OF test_recode IS
 	);
 	end component;
 
-	constant WDATA : natural := 16;
-	constant WOUT  : natural := 16;
+	constant WDATA : natural := 32;
+	constant WOUT  : natural := 32;
 	constant FSIZE : natural := 10; -- warning, this is NB_NEU
 	signal clk           :   std_logic := '0';
 	-- clock period definitions
@@ -107,33 +107,38 @@ begin
 		
 		-- reset component
 		addr_clear <= '1';
+		data_in_valid <= '0';
 		wait for 1 ns;
 
 
 		addr_clear <= '0';
 		write_mode <= '1';
 		wait for 1 ns;
-
+		
+		-- chargement des constantes à ajouter dans le recode
 		while counter < 10 loop
-			write_data <= X"000A";
+			write_data <= X"0000000A";
 			write_enable <= '1';
 			wait for clk_period;
 			counter := counter +1;
 		end loop;
 
+		-- mode de recode, traitement des données
 		write_mode <= '0';
 		data_in_valid <= '1';
-		data_in <= X"0020";
+		data_in <= X"00000020";
 		out_fifo_room <= X"0020";
 
 		wait for 10 * clk_period;
 
+		-- simule que la fifo de sortie est pleine 
 		out_fifo_room <= X"0000";
 		wait for 10 * clk_period;
 
+		-- De nouveau, il y a de la place
 		out_fifo_room <= X"0002";
 		wait for 10 * clk_period;
-		data_in <= X"FFF2";
+		data_in <= X"FFFFFFF2";
 		wait;
 
 	end process;
