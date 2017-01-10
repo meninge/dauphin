@@ -1,3 +1,30 @@
+----------------------------------------------------------------
+-- uut:
+--	nnlayer.vhd
+--	neuron.vhd
+--	fsm.vhd
+--	distribuf.vhd
+--	recode.vhd
+--	circbuf_fast.vhd
+-- description: 
+--	simple test_bench to verify nnlayer and recode behaviors in normal conditions
+--	with a fifo just before nnlayer,
+--	and a fifo between nnlayer and recode
+-- expected result:
+--	neurons should be configured in weight configuration mode
+--	in normal mode, neurons should input accumulation of
+--	data*weights
+--	nnlayer should correctly interact with input and output fifos
+
+--	recode should be configured in weight configuration mode
+--	in normal mode, recode should act as:
+--		output = (input < 0) ? 0 : input + cst[addr]
+--	recode should correctly interact with input fifo
+--
+--	total outputs:
+--		total = (sum(datas*weights[neuron]) < 0) ?
+--			0 : sum(datas*weights[neuron]) + cst[corresponding neuron]
+----------------------------------------------------------------
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.std_logic_unsigned.all;

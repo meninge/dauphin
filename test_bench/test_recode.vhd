@@ -1,3 +1,13 @@
+----------------------------------------------------------------
+-- uut:
+--	recode.vhd
+-- description: 
+--	simple test_bench to verify recode behavior in simple cases
+-- expected result:
+--	recode should be configurable, and in simple mode
+--	negative inputs become 0, and positive ones are added a constant
+--	input shall not be taken if there is no room in output fifo
+----------------------------------------------------------------
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.std_logic_unsigned.all;

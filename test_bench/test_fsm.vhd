@@ -1,3 +1,11 @@
+----------------------------------------------------------------
+-- uut:
+--	fsm.vhd
+-- description: 
+--	simple test_bench to verify fsm behavior in simple cases
+-- expected result:
+--	fsm should behave as we describe in the fsm graph
+----------------------------------------------------------------
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.std_logic_unsigned.all;

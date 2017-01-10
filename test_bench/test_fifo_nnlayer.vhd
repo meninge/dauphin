@@ -1,3 +1,19 @@
+----------------------------------------------------------------
+-- uut:
+--	nnlayer.vhd
+--	neuron.vhd
+--	fsm.vhd
+--	distribuf.vhd
+--	circbuf_fast.vhd
+-- description: 
+--	simple test_bench to verify nnlayer behavior in normal conditions
+--	with a fifo just before
+-- expected result:
+--	neurons should be configured in weight configuration mode
+--	in normal mode, neurons should input accumulation of
+--	data*weights
+--	nnlayer should correctly interact with input fifo
+----------------------------------------------------------------
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.std_logic_unsigned.all;
@@ -9,10 +25,10 @@ use unimacro.Vcomponents.all;
 use ieee.numeric_std.all;
 
 -- entity declaration for your testbench.Dont declare any ports here
-ENTITY test_nnlayer_fifo IS 
-	END test_nnlayer_fifo;
+ENTITY test_fifo_nnlayer IS 
+	END test_fifo_nnlayer;
 
-ARCHITECTURE behavior OF test_nnlayer_fifo IS
+ARCHITECTURE behavior OF test_fifo_nnlayer IS
 	-- add component under test
 		-- Parameters for the neurons
 	constant WDATA   : natural := 32;
@@ -170,11 +186,7 @@ begin
 		clk <= '0';
 		wait for clk_period/2;  --for next 0.5 ns signal is '0'.
 	end process;
-	--spy_process : process
-	--begin
-	--	init_signal_spy("/test_nnlayer/uut/fsm_gen/sensor_we_mode","sensor_we_mode",1,-1);
-	--end process;
-	-- Stimulus process
+
 	out_fifo_room_proc : process
 	begin
 		wait for clk_period;

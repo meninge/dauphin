@@ -1,3 +1,17 @@
+----------------------------------------------------------------
+-- uut:
+--	recode.vhd
+--	circbuf_fast.vhd
+-- description: 
+--	simple test_bench to verify recode behavior in normal conditions
+--	with a fifo just before
+--	and a fifo just after
+-- expected result:
+--	recode should be configured in weight configuration mode
+--	in normal mode, recode should act as:
+--		output = (input < 0) ? 0 : input + cst[addr]
+--	recode should correctly interact with input and output fifos
+----------------------------------------------------------------
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.std_logic_unsigned.all;

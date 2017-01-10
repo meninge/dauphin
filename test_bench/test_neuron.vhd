@@ -1,3 +1,11 @@
+----------------------------------------------------------------
+-- uut:
+--	neuron.vhd
+-- description: 
+--	simple test_bench to verify neuron behavior in simple cases
+-- expected result:
+--	neuron should behave as we describe in the neuron schematic 
+----------------------------------------------------------------
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.std_logic_unsigned.all;

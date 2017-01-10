@@ -1,3 +1,17 @@
+----------------------------------------------------------------
+-- uut:
+--	nnlayer.vhd
+--	neuron.vhd
+--	fsm.vhd
+--	distribuf.vhd
+-- description: 
+--	simple test_bench to verify nnlayer behavior in normal
+--	operating conditions
+-- expected result:
+--	neurons should be configured in weight configuration mode
+--	in normal mode, neurons should input accumulation of
+--	data*weights
+----------------------------------------------------------------
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.std_logic_unsigned.all;
