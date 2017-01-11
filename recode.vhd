@@ -19,7 +19,7 @@ entity recode is
 		write_mode      : in  std_logic;
 		write_data      : in  std_logic_vector(WDATA - 1 downto 0);
 		write_enable    : in  std_logic;
-		write_ready     : out std_logic;
+		write_ready     : out std_logic; -- not used
 		-- The user-specified number of neurons
 		user_nbneu      : in  std_logic_vector(15 downto 0);
 		-- Data input
@@ -57,19 +57,25 @@ begin
 			if (addr_clear = '1') then
 				current_state <= RESET;
 			else
+				-- update the the ram 
+				if (current_state = WRITE_INPUT) then
+					ram(addr) <= write_data;
+				end if;
 				current_state <= next_state;
 				addr <= next_addr;
 			end if;
 		end if;
 	end process;
 
-	process (clk, current_state, write_mode, write_enable, addr, out_fifo_room, data_in_valid)
+	-- Process combinatoire de la FSM
+	process (current_state, write_mode, write_enable, addr, out_fifo_room, data_in_valid, next_addr, write_data, ram, data_in)
 	begin
 			write_ready <= '0';
 			data_out <= (others => '0');
 			data_out_valid <= '0';
 			data_in_ready <= '0';
 			next_state <= RESET;
+			next_addr <= 0;
 
 			case current_state is
 				when RESET =>
@@ -83,11 +89,12 @@ begin
 					end if;
 
 				when WRITE_INPUT =>
-					ram(addr) <= write_data;
+					--ram(addr) <= write_data;
 					write_ready <= '1';
 					next_addr <= addr + 1;
 					if (addr = FSIZE-1) then
 						next_state <= RESET;
+						next_addr <= 0;
 					elsif (write_enable = '1') then
 						next_state <= WRITE_INPUT;
 					else
@@ -113,6 +120,7 @@ begin
 
 						if (addr = FSIZE-1) then 
 							next_state <= RESET;
+							next_addr <= 0;
 						else
 							next_state <= DATA;
 						end if;

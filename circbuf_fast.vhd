@@ -1,4 +1,3 @@
-
 -- FIFO implemented as a circular buffer
 
 library ieee;

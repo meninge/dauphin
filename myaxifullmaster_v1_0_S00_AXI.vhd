@@ -25,14 +25,14 @@
 --      08:1  : clear all (not written to register)
 --      09:1  : Read master AXI busy state
 --
--- reg 4 (unused)
--- reg 5 (unused)
+-- reg 4 (unused) : sortie de la première FIFO
+-- reg 5 (unused) : sortie de la deuxième FIFO
 --
 -- reg 6 (R/W)
 --   31-00:32 : Number of NN output values to write back to DDR
 --
--- reg 7 (unused)
--- reg 8 (unused)
+-- reg 7 (unused) : sortie de la troisième FIFO
+-- reg 8 (unused) : sortie de la quatrième FIFO
 -- reg 9 (unused)
 --
 -- reg 10 (R/W)
@@ -227,8 +227,9 @@ architecture arch_imp of myaxifullmaster_v1_0_S00_AXI is
 	constant LAYER1_WDATA   : natural := 32;
 	constant LAYER1_WWEIGHT : natural := 32;
 	constant LAYER1_WACCU   : natural := 32;
-	constant LAYER1_FSIZE   : natural := 784;
-	constant LAYER1_NBNEU   : natural := 10;
+	--constant LAYER1_FSIZE   : natural := 784;
+	constant LAYER1_FSIZE   : natural := 64;
+	constant LAYER1_NBNEU   : natural := 3;
 
 	constant RECODE_WDATA   : natural := LAYER1_WACCU;
 	constant RECODE_WOUT    : natural := 32;
@@ -238,7 +239,7 @@ architecture arch_imp of myaxifullmaster_v1_0_S00_AXI is
 	constant LAYER2_WWEIGHT : natural := 32;
 	constant LAYER2_WACCU   : natural := 32;
 	constant LAYER2_FSIZE   : natural := LAYER1_NBNEU;
-	constant LAYER2_NBNEU   : natural := 10;
+	constant LAYER2_NBNEU   : natural := 3;
 
 	signal req_start_recv : std_logic := '0';
 	signal req_start_send : std_logic := '0';
@@ -1023,7 +1024,7 @@ begin
 				slv_reg_rddata <= slv_reg13;
 
 			when b"1110" =>
-				--slv_reg_rddata <= slv_reg14;
+				slv_reg_rddata <= slv_reg14;
 
 				-- Read the amount of data still present in the FIFOs
 				slv_reg_rddata(7 downto 0)   <= inst_fifo_1r_out_cnt;
@@ -1033,7 +1034,7 @@ begin
 				slv_reg_rddata(31 downto 24) <= inst_rdbuf_out_cnt;
 
 			when b"1111" =>
-				--slv_reg_rddata <= slv_reg15;
+				slv_reg_rddata <= slv_reg15;
 
 				slv_reg_rddata(7 downto 0) <= inst_wrbuf_out_cnt;
 
@@ -1095,14 +1096,14 @@ begin
 			fifo_out_cnt  => inst_rdbuf_out_cnt
 		);
 
-	inst_rdbuf_clear   <= reset_reg;
-	inst_rdbuf_in_data <= mymaster_fifor_data;
-	inst_rdbuf_in_ack  <= mymaster_fifor_en;
-	inst_rdbuf_out_ack <=
-		(recv_cfgl1 and inst_layer1_write_ready) or
-		(recv_cfgr1 and inst_recode_write_ready) or
-		(recv_cfgl2 and inst_layer2_write_ready) or
-		(recv_frame and inst_layer1_data_in_ready);
+		inst_rdbuf_clear   <= reset_reg;
+		inst_rdbuf_in_data <= mymaster_fifor_data;
+		inst_rdbuf_in_ack  <= mymaster_fifor_en;
+		inst_rdbuf_out_ack <=
+			(recv_cfgl1 and inst_layer1_write_ready) or
+			(recv_cfgr1 and inst_recode_write_ready) or
+			(recv_cfgl2 and inst_layer2_write_ready) or
+			(recv_frame and inst_layer1_data_in_ready);
 
 
 	----------------------------------

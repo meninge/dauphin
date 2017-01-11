@@ -140,7 +140,7 @@ begin
 		-- Ports for Write Enable
 		write_mode => write_mode,
 		write_data => write_data,
-		write_enable => write_enable,
+		write_enable => fifo_out_rdy,
 		write_ready => write_ready,
 		-- The user-specified frame size and number of neurons
 		user_fsize => user_fsize,

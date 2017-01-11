@@ -1,4 +1,4 @@
--- Implementation of the FSM for a nnlayer 
+-- Implementation of the FSM for a nnlayer
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -54,13 +54,12 @@ entity fsm is
 		-- output FIFO control
 		--out_fifo_in_ack: out std_logic;
 		out_fifo_in_cnt: in std_logic_vector(CNTW-1 downto 0)
-		
 	);
 end fsm;
 
 architecture synth of fsm is
 
-	type STATE is (RESET_STATE, MODE_WEIGHT, NOTIFY_1N, WAIT_NOTIFY, 
+	type STATE is (RESET_STATE, MODE_WEIGHT, NOTIFY_1N, WAIT_NOTIFY,
 	WAIT_WEIGHT, SEND_WEIGHT, WAIT_DATA, END_ACC, SHIFT_NOTIFY, END_CONFIG, MODE_ACC, WAIT_1D, SEND_DATA, MODE_FSM,
        	SHIFT_MODE, SHIFT_CPY, SHIFT, WAIT_SHIFT_CPY, WAIT_SHIFT);
 	-- Internal signals
@@ -69,11 +68,12 @@ architecture synth of fsm is
 	constant OUT_FIFO_MARGIN : unsigned := to_unsigned(2,32);
 
 	-- state of mirror FSM
-	signal current_state_mirror, next_state_mirror : STATE; 
+	signal current_state_mirror, next_state_mirror : STATE;
 	-- state of neurons accumulation FSM
 	signal current_state_acc, next_state_acc : STATE;
 	-- address counter for weight loading or neurons classic accumulation
-	signal current_addr, next_addr : std_logic_vector(WADDR-1 downto 0); 
+	signal current_addr: std_logic_vector(WADDR-1 downto 0) := (others => '0');
+	signal next_addr: std_logic_vector(WADDR-1 downto 0) := (others => '0'); 
 	-- counter for mirror chain
 	signal current_shift_counter, next_shift_counter : std_logic_vector(15 downto 0);
 
@@ -90,20 +90,19 @@ begin
 	process (clk)
 	begin
 		if rising_edge(clk) then
-			if (reset = '1') then 
+			if (reset = '1') then
 				current_state_acc <= RESET_STATE;
 				current_state_mirror <= SHIFT_MODE;
 				first_neuron <= '0';
 				--next_flag_mirror_chain <= '0';
 			else
 				-- present = next variable
-				
 				-- state of mirror FSM
 				current_state_mirror <= next_state_mirror;
 				-- state of neurons accumulation FSM
 				current_state_acc<= next_state_acc;
 				-- address counter for weight loading or neurons classic accumulation
-				current_addr <= next_addr; 
+				current_addr <= next_addr;
 				-- counter for mirror chain
 				current_shift_counter <= next_shift_counter;
 				-- flag for mirror chain fsm
@@ -119,7 +118,6 @@ begin
 	-----------------------------
 	-- Combinatorial processes --
 	-----------------------------
-	
 	-- La liste de sensibilite doit contenir tous les signaux sur les quels on fait des 'if' par exemple
 
 	-- process to handle classic neurons accumulation and weight loading
@@ -128,31 +126,25 @@ begin
 	begin
 		-- need to set all signals at each step
 
+		ctrl_we_mode <= '0';
+		ctrl_we_shift <= '0';
+		ctrl_we_valid <= '0';
+		ctrl_accu_clear <= '0';
+		ctrl_accu_add <= '0';
+		n0_we_prev <= '0';
+		addr <= current_addr;
+		next_addr <= (others => '0');
+		next_state_acc <= MODE_FSM;
+		next_flag_mirror_chain <= '0';
+		next_first_neuron <= '0';
+
 		case current_state_acc is
 			when RESET_STATE =>
-				ctrl_we_mode <= '0';
-				ctrl_we_shift <= '0';
-				ctrl_we_valid <= '0';
-				ctrl_accu_clear <= '0';
-				ctrl_accu_add <= '0';
-				n0_we_prev <= '0';
-				addr <= (others => '0'); 
-				
-				next_addr <= (others => '0');
-
-				-- in case of reset, fsm goes to MODE_ACC 
+				-- in case of reset, fsm goes to MODE_ACC
 				next_state_acc <= MODE_FSM;
 
 			when MODE_WEIGHT =>
 				ctrl_we_mode <= '1';
-				ctrl_we_shift <= '0';
-				ctrl_we_valid <= '0';
-				ctrl_accu_clear <= '0';
-				ctrl_accu_add <= '0';
-				n0_we_prev <= '0';
-				addr <= current_addr; 
-				
-				next_addr <= (others => '0');
 
 				-- if neurons has got mode_switch signal
 				-- goes to NOTIFY1N
@@ -165,49 +157,28 @@ begin
 
 			when NOTIFY_1N =>
 				ctrl_we_mode <= '1';
-				ctrl_we_valid <= '0';
-				ctrl_accu_clear <= '0';
-				ctrl_accu_add <= '0';
-				addr <= current_addr; 
-				
-				next_addr <= (others => '0');
-
-				-- init addr
-				next_addr <= (others => '0');
 
 				if ( sensor_we_shift = '1') then
-					ctrl_we_shift <= '0';
 					next_state_acc <= WAIT_WEIGHT;
+					n0_we_prev <= '1';
 				else
 					if (first_neuron = '1') then
 						ctrl_we_shift <= '1';
-						n0_we_prev <= '1';
 						next_first_neuron <= '0';
-						next_state_acc <= NOTIFY_1N;
-					else
-						ctrl_we_shift <= '0';
-						next_state_acc <= NOTIFY_1N;
 					end if;
+					n0_we_prev <= '0';
+					next_state_acc <= NOTIFY_1N;
 				end if;
 
 			when WAIT_NOTIFY =>
 				ctrl_we_mode <= '1';
-				ctrl_we_shift <= '0';
-				ctrl_we_valid <= '0';
-				ctrl_accu_clear <= '0';
-				ctrl_accu_add <= '0';
-				n0_we_prev <= '0';
-				addr <= current_addr; 
-				
-				next_addr <= (others => '0');
-
 				if (nN_we_next = '1') then
 					next_state_acc<= END_CONFIG;
 				else
 					if (sensor_we_shift = '1') then
-						next_state_acc <= WAIT_WEIGHT;	
-					else 
-						next_state_acc <= WAIT_NOTIFY;	
+						next_state_acc <= WAIT_WEIGHT;
+					else
+						next_state_acc <= WAIT_NOTIFY;
 					end if;
 				end if;
 
@@ -215,12 +186,6 @@ begin
 			-- data is here if sensor_we_valid = '1'
 			-- meaning that data is out of distribuf
 				ctrl_we_mode <= '1';
-				ctrl_we_shift <= '0';
-				ctrl_we_valid <= '0';
-				ctrl_accu_clear <= '0';
-				ctrl_accu_add <= '0';
-				n0_we_prev <= '0';
-				addr <= current_addr; 
 
 				next_addr <= current_addr;
 
@@ -230,19 +195,12 @@ begin
 					next_state_acc <= WAIT_WEIGHT;
 				end if;
 
-				
 			when SEND_WEIGHT =>
 				ctrl_we_mode <= '1';
-				ctrl_we_shift <= '0';
 				ctrl_we_valid <= '1';
-				ctrl_accu_clear <= '0';
-				ctrl_accu_add <= '0';
-				n0_we_prev <= '0';
-				addr <= current_addr;
 
 				-- incr addr for next round
 				next_addr <= std_logic_vector(unsigned(current_addr) + 1);
-				
 				if ( unsigned(current_addr) = FSIZE - 1) then
 					next_state_acc <= SHIFT_NOTIFY;
 				else
@@ -252,126 +210,50 @@ begin
 			when SHIFT_NOTIFY =>
 				ctrl_we_mode <= '1';
 				ctrl_we_shift <= '1';
-				ctrl_we_valid <= '0';
-				ctrl_accu_clear <= '0';
-				ctrl_accu_add <= '0';
-				n0_we_prev <= '0';
-				addr <= current_addr;
 
-				next_addr <= (others => '0');
-					
 				next_state_acc <= WAIT_NOTIFY;
 
 			when END_CONFIG =>
-				ctrl_we_mode <= '0';
-				ctrl_we_shift <= '0';
-				ctrl_we_valid <= '0';
-				ctrl_accu_clear <= '0';
-				ctrl_accu_add <= '0';
-				n0_we_prev <= '0';
-				addr <= current_addr;
-
-				next_addr <= (others => '0');
-					
 				next_state_acc <= MODE_FSM;
 
-			when MODE_ACC => 
-			-- we need to switch to weight mode if C program said so
-				ctrl_we_mode <= '0';
-				ctrl_we_shift <= '0';
-				ctrl_we_valid <= '0';
-				ctrl_accu_clear <= '0';
-				ctrl_accu_add <= '0';
-				n0_we_prev <= '0';
-				addr <= current_addr;
-
-				next_addr <= (others => '0');
-					
+			when MODE_ACC =>
 				if (sensor_we_mode = '0') then
 					next_state_acc <= WAIT_1D;
-				else 
+				else
 					next_state_acc <= MODE_ACC;
 				end if;
 
 			when WAIT_1D =>
-				ctrl_we_mode <= '0';
-				ctrl_we_shift <= '0';
-				ctrl_we_valid <= '0';
 				ctrl_accu_clear <= '1';
-				ctrl_accu_add <= '0';
-				n0_we_prev <= '0';
-				addr <= current_addr;
-
-				next_addr <= (others => '0');
-					
 				if (sensor_we_valid= '1') then
 					next_state_acc <= SEND_DATA;
-				else 
+				else
 					next_state_acc <= WAIT_1D;
 				end if;
 
 			when SEND_DATA =>
-				ctrl_we_mode <= '0';
-				ctrl_we_shift <= '0';
-				ctrl_we_valid <= '0';
-				ctrl_accu_clear <= '0';
 				ctrl_accu_add <= '1';
-				n0_we_prev <= '0';
-				addr <= current_addr;
-
 				-- incr addr for next round
 				next_addr <= std_logic_vector( unsigned(current_addr) + 1);
-					
 				if ( unsigned(current_addr) = FSIZE - 1 ) then
 					next_state_acc <= END_ACC;
-				else 
+				else
 					next_state_acc <= WAIT_DATA;
 				end if;
-				
-			when WAIT_DATA => 
-				ctrl_we_mode <= '0';
-				ctrl_we_shift <= '0';
-				ctrl_we_valid <= '0';
-				ctrl_accu_clear <= '0';
-				ctrl_accu_add <= '0';
-				n0_we_prev <= '0';
-				addr <= current_addr;
-
+			when WAIT_DATA =>
 				next_addr <= current_addr;
-					
 				if ( sensor_we_valid = '1') then
 					next_state_acc <= SEND_DATA;
 				else
 					next_state_acc <= WAIT_DATA;
 				end if;
-				
-			when END_ACC => 
-				ctrl_we_mode <= '0';
-				ctrl_we_shift <= '0';
-				ctrl_we_valid <= '0';
-				ctrl_accu_clear <= '0';
-				ctrl_accu_add <= '0';
-				n0_we_prev <= '0';
-				addr <= current_addr;
-
-				next_addr <= current_addr;
-
+			when END_ACC =>
 				-- need to pass flag to mirror FSM
 				next_flag_mirror_chain <= '1';
-					
 				-- mode switching before
-				-- going again in acc loop again 
+				-- going again in acc loop again
 				next_state_acc <= MODE_FSM;
-			when MODE_FSM=> 
-				ctrl_we_mode <= '0';
-				ctrl_we_shift <= '0';
-				ctrl_we_valid <= '0';
-				ctrl_accu_clear <= '0';
-				ctrl_accu_add <= '0';
-				n0_we_prev <= '0';
-				addr <= current_addr;
-				next_flag_mirror_chain <= '0';
-
+			when MODE_FSM=>
 				next_addr <= current_addr;
 				if (fsm_mode = '1') then
 					next_state_acc <= MODE_WEIGHT;
@@ -386,16 +268,17 @@ begin
 	end process;
 
 	-- process to handle mirror chain monitoring
-	process (current_state_mirror, current_shift_counter, sensor_shift, sensor_copy, flag_mirror_chain)
+	process (current_state_mirror, current_shift_counter, sensor_shift, sensor_copy, flag_mirror_chain, out_fifo_in_cnt)
 	begin
 		-- signals that are just up for one cycle go there
 		--out_fifo_in_ack <= '0';
+		ctrl_shift_copy <= '0';
+		ctrl_shift_en <= '0';
+		next_shift_counter <= (others => '0');
+		next_state_mirror <= SHIFT_MODE;
+
 		case current_state_mirror is
 			when SHIFT_MODE =>
-				ctrl_shift_copy <= '0';
-				ctrl_shift_en <= '0';
-				next_shift_counter <= (others => '0');
-
 				if (flag_mirror_chain = '1') then
 					--next_flag_mirror_chain <= '0';
 					next_state_mirror <= SHIFT_CPY;
@@ -406,16 +289,9 @@ begin
 			when SHIFT_CPY =>
 				-- copy accumulated value to mirror buffer
 				ctrl_shift_copy <= '1';
-				ctrl_shift_en<= '0';
-				next_shift_counter <= (others => '0');
-
 				next_state_mirror <= WAIT_SHIFT_CPY;
 
 			when WAIT_SHIFT_CPY =>
-				ctrl_shift_copy <= '0';
-				ctrl_shift_en<= '0';
-				next_shift_counter <= (others => '0');
-
 				if (sensor_copy = '1') then
 					next_state_mirror <= SHIFT;
 				else
@@ -423,13 +299,7 @@ begin
 				end if;
 
 			when SHIFT =>
-				ctrl_shift_copy <= '0';
-				--out_fifo_in_ack <= '1';
-				ctrl_shift_en <= '0';
-				-- loop until we emptied all neurons mirrors
 				next_shift_counter <= current_shift_counter;
-
-
 				if (unsigned (current_shift_counter) = NB_NEURONS -1) then
 					next_state_mirror <= SHIFT_MODE;
 					ctrl_shift_en <= '1';
@@ -439,14 +309,15 @@ begin
 					ctrl_shift_en <= '1';
 					next_shift_counter <= std_logic_vector( unsigned (current_shift_counter ) +1);
 				else
-					--next_state_mirror <= WAIT_SHIFT;
 					next_state_mirror <= SHIFT;
 				end if;
 			when others =>
-				next_state_mirror <= SHIFT_MODE;
 		end case;
 
-	end process; 
+	end process;
+
+	-- port assignements
+	addr <= current_addr;
 
 
 end architecture;

@@ -53,15 +53,16 @@ architecture synth of neuron is
 	-- Registre contenant l'accumulation du DSP
 	signal accu : signed(47 downto 0) := (others => '0');
 	-- Registre contenant la copy de l'accu
+	signal mirror : std_logic_vector(WACCU-1 downto 0);
 	
 	-- Registre m√©morisant si on se trouve dans un √tat de config
-	signal reg_config : std_logic;
+	signal reg_config : std_logic := '0';
 begin
 	-------------------------------------------------------------------
 	-- Output ports
 	-------------------------------------------------------------------
 
-	mac : process (clk, ctrl_we_mode, ctrl_accu_add)
+	mac : process (clk)
 	begin 
 		if rising_edge(clk) then
 			-- Mode accumulation
@@ -79,20 +80,49 @@ begin
 		end if;
 	end process mac;
 
-	shift: process (clk,ctrl_shift_copy, ctrl_shift_en)
+	shift: process (clk)
 	begin 
 		if (rising_edge(clk)) then
 			-- we have to copy the accu reg into the miroir reg
 			if ((ctrl_shift_copy = '1')) then
-				sh_data_out <= std_logic_vector(accu(WACCU-1 downto 0));
+				mirror <= std_logic_vector(accu(WACCU-1 downto 0));
 			elsif (ctrl_shift_en = '1') then
 				-- we have to shift the miroir prev into the miroir next
-				sh_data_out <= sh_data_in;
+				mirror <= sh_data_in;
 			end if;
 		end if;
 	end process;
 
+	reg_conf : process (clk)
+	begin 
+		if rising_edge(clk) then
+			if (ctrl_we_mode = '1') and (ctrl_we_shift = '1') then
+				-- update the reg_config
+				reg_config <= we_prev;
+			end if;
+				
+		end if;
+	end process reg_conf;
 
+	load_weight : process (clk)
+	begin 
+		if rising_edge(clk) then
+			-- data available on input
+			if (ctrl_we_mode = '1') and (ctrl_we_valid = '1') then
+				if (reg_config = '1') then
+					-- our turn to get our config
+					if (unsigned(addr) >= 0 and unsigned(addr) < FSIZE) then
+						-- load all weight
+						ram(to_integer(unsigned(addr))) <= write_data(15 downto 0);
+					end if; 
+				end if;
+			end if;
+		end if;
+	end process load_weight;
+
+	-- Tous les ports doivent etre affectÈ en combinatoire ici
+
+	-- Ceci est un process combinatoire
 	sensor : process (ctrl_we_mode, ctrl_we_shift, ctrl_we_valid, ctrl_shift_copy, ctrl_shift_en)
 	begin 
 		-- updating the reg_conf
@@ -119,43 +149,16 @@ begin
 		else 
 			sensor_shift <= '0';
 		end if;
+		-- not used, but need to be set
+		sensor_we_valid <= '1';
 	end process sensor;
 
-	reg_conf : process (clk, ctrl_we_mode, ctrl_we_shift)
-	begin 
-		if rising_edge(clk) then
-			if (ctrl_we_mode = '1') and (ctrl_we_shift = '1') then
-				-- update the reg_config
-				--we_next <= reg_config;
-				reg_config <= we_prev;
-				we_next <= we_prev;
-			end if;
-				
-		end if;
-		-- we_next <= reg_config;
-		
-	end process reg_conf;
-
-	load_weight : process (clk, ctrl_we_mode, ctrl_we_shift, reg_config, ctrl_we_valid)
-	begin 
-		if rising_edge(clk) then
-			-- data available on input
-			if (ctrl_we_mode = '1') and (ctrl_we_valid = '1') then
-				if (reg_config = '1') then
-					-- our turn to get our config
-					if (unsigned(addr) >= 0 and unsigned(addr) < FSIZE) then
-						-- load all weight
-						ram(to_integer(unsigned(addr))) <= write_data(15 downto 0);
-					end if; 
-				end if;
-			end if;
-		end if;
-	end process load_weight;
+	we_next <= reg_config;
+	sh_data_out <= mirror;
+	sensor_we_valid <= '1';
 
 	--we_next         <= '0';
-
 	--sh_data_out     <= (others => '0');
-
 	--sensor_shift    <= '0';
 	--sensor_copy     <= '0';
 	--sensor_we_mode  <= '0';

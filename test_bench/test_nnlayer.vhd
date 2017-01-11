@@ -157,6 +157,7 @@ begin
 
 		write_mode <= '1'; -- load weights
 		data_in_valid <= '1'; -- data is in FIFO
+		write_enable<='1';
 
 		-- while (.fsm_gen.sensor_we_mode = 0) loop
 		-- 	wait for clk_period;

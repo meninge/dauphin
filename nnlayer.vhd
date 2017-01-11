@@ -70,6 +70,8 @@ architecture synth of nnlayer is
 	signal sg_ctrl_shift_copy : std_logic_vector(0 downto 0);
 	-- Address signal
 	signal sg_addr : std_logic_vector(WADDR - 1 downto 0);
+	-- Signal to connect the sensor we valid from the good fifo to the fsm inside the nnlayer
+	signal sg_sensor_we_valid : std_logic;
 
 	-- Corresponding arrays
 	signal arr_ctrl_we_mode : std_logic_vector(NBNEU - 1 downto 0) := (others => '0');
@@ -428,16 +430,14 @@ begin
 			sensor_copy     => sensors_copy_match(0),
 			sensor_we_mode  => sensors_we_mode_match(0),
 			sensor_we_shift => sensors_we_shift_match(0),
-			--sensor_we_valid => write_enable,
-			sensor_we_valid => data_in_valid,
+			sensor_we_valid => sg_sensor_we_valid,
 			fsm_mode => write_mode,
 			out_fifo_in_cnt => sg_out_fifo_in_cnt
 			--out_fifo_in_ack => sg_out_fifo_in_ack
 		);
-
-	--write_enable => sg_in_fifo_out_ready;
-	write_ready <= '0';
-	data_in_ready <= sg_ctrl_we_valid(0);
+	sg_sensor_we_valid <= (data_in_valid and not write_mode) or (write_enable and write_mode);
+	data_in_ready <= sg_ctrl_we_valid(0) and not write_mode;
+	write_ready <= sg_ctrl_we_valid(0) and write_mode;
 	sg_out_fifo_in_cnt <= out_fifo_room;
 
 
