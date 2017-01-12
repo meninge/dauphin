@@ -27,7 +27,7 @@ entity nnlayer is
 		clear          : in  std_logic;
 		-- Ports for Write Enable
 		write_mode     : in  std_logic;
-		write_data     : in  std_logic_vector(WWEIGHT-1 downto 0);
+		write_data     : in  std_logic_vector(WWEIGHT-1 downto 0) ;
 		write_enable   : in  std_logic;
 		write_ready    : out std_logic;
 		-- The user-specified frame size and number of neurons
@@ -61,17 +61,17 @@ architecture synth of nnlayer is
 	signal arr_data_in : std_logic_vector(NBNEU*WDATA-1 downto 0) := (others => '0');
 
 	-- Controls signals, go to every neuron through distribuf
-	signal sg_ctrl_we_mode : std_logic_vector(0 downto 0);
-	signal sg_ctrl_we_shift : std_logic_vector(0 downto 0);
-	signal sg_ctrl_we_valid : std_logic_vector(0 downto 0);
-	signal sg_ctrl_accu_clear : std_logic_vector(0 downto 0);
-	signal sg_ctrl_accu_add : std_logic_vector(0 downto 0);
-	signal sg_ctrl_shift_en : std_logic_vector(0 downto 0);
-	signal sg_ctrl_shift_copy : std_logic_vector(0 downto 0);
+	signal sg_ctrl_we_mode : std_logic_vector(0 downto 0):= (others => '0');
+	signal sg_ctrl_we_shift : std_logic_vector(0 downto 0):= (others => '0');
+	signal sg_ctrl_we_valid : std_logic_vector(0 downto 0):= (others => '0');
+	signal sg_ctrl_accu_clear : std_logic_vector(0 downto 0):= (others => '0');
+	signal sg_ctrl_accu_add : std_logic_vector(0 downto 0):= (others => '0');
+	signal sg_ctrl_shift_en : std_logic_vector(0 downto 0):= (others => '0');
+	signal sg_ctrl_shift_copy : std_logic_vector(0 downto 0):= (others => '0');
 	-- Address signal
-	signal sg_addr : std_logic_vector(WADDR - 1 downto 0);
+	signal sg_addr : std_logic_vector(WADDR - 1 downto 0):= (others => '0');
 	-- Signal to connect the sensor we valid from the good fifo to the fsm inside the nnlayer
-	signal sg_sensor_we_valid : std_logic;
+	signal sg_sensor_we_valid : std_logic := '0';
 
 	-- Corresponding arrays
 	signal arr_ctrl_we_mode : std_logic_vector(NBNEU - 1 downto 0) := (others => '0');
@@ -89,24 +89,24 @@ architecture synth of nnlayer is
 	-- Hence NBNEU + 1 values.
 	type match_array is array (0 to NBNEU) of std_logic;
 
-	signal we_match : match_array;
+	signal we_match : match_array := (others => '0');
 
 	type match_array_waccu is array (0 to NBNEU) of std_logic_vector(WACCU - 1 downto 0);
 	-- Declaration of sh_data array with NBNEU wires
-	signal sh_data_match : match_array_waccu;
+	signal sh_data_match : match_array_waccu := (others => (others => '0'));
 
 	-- Declaration of sensor arrays
 	-- We use only the first one of this array
-	signal sensors_shift_match : match_array;
-	signal sensors_copy_match : match_array;
-	signal sensors_we_mode_match : match_array;
-	signal sensors_we_shift_match : match_array;
-	signal sensors_we_valid_match : match_array;
+	signal sensors_shift_match : match_array:= (others => '0');
+	signal sensors_copy_match : match_array:= (others => '0');
+	signal sensors_we_mode_match : match_array:= (others => '0');
+	signal sensors_we_shift_match : match_array:= (others => '0');
+	signal sensors_we_valid_match : match_array:= (others => '0');
 
 	-- FIFO management signals
-	signal sg_in_fifo_out_ack : std_logic;
+	signal sg_in_fifo_out_ack : std_logic := '0';
 	--signal sg_out_fifo_in_ack : std_logic;
-	signal sg_out_fifo_in_cnt : std_logic_vector(CNTW - 1 downto 0);
+	signal sg_out_fifo_in_cnt : std_logic_vector(CNTW - 1 downto 0) := (others => '0');
 
 	-- Component declaration: one neuron
 	component neuron is
@@ -435,8 +435,8 @@ begin
 			out_fifo_in_cnt => sg_out_fifo_in_cnt
 			--out_fifo_in_ack => sg_out_fifo_in_ack
 		);
-	sg_sensor_we_valid <= (data_in_valid and not write_mode) or (write_enable and write_mode);
-	data_in_ready <= sg_ctrl_we_valid(0) and not write_mode;
+	sg_sensor_we_valid <= (data_in_valid and not(write_mode)) or (write_enable and write_mode);
+	data_in_ready <= sg_ctrl_accu_add(0) and not(write_mode);
 	write_ready <= sg_ctrl_we_valid(0) and write_mode;
 	sg_out_fifo_in_cnt <= out_fifo_room;
 

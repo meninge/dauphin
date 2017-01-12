@@ -229,7 +229,7 @@ architecture arch_imp of myaxifullmaster_v1_0_S00_AXI is
 	constant LAYER1_WACCU   : natural := 32;
 	--constant LAYER1_FSIZE   : natural := 784;
 	constant LAYER1_FSIZE   : natural := 64;
-	constant LAYER1_NBNEU   : natural := 3;
+	constant LAYER1_NBNEU   : natural := 4;
 
 	constant RECODE_WDATA   : natural := LAYER1_WACCU;
 	constant RECODE_WOUT    : natural := 32;
@@ -274,8 +274,8 @@ architecture arch_imp of myaxifullmaster_v1_0_S00_AXI is
 	component circbuf_fast is
 		generic (
 			DATAW : natural := 32;
-			DEPTH : natural := 8;
-			CNTW  : natural := 16
+			DEPTH : natural := 64;
+			CNTW  : natural := 8
 		);
 		port (
 			reset         : in  std_logic;
@@ -1146,7 +1146,8 @@ begin
 	inst_layer1_user_fsize    <= slv_reg0(15 downto 0);
 	inst_layer1_user_nbneu    <= slv_reg1(15 downto 0);
 	inst_layer1_data_in       <= inst_rdbuf_out_data(LAYER1_WDATA-1 downto 0);
-	inst_layer1_data_in_valid <= inst_rdbuf_out_rdy;
+	-- protection from reading into the 1st FIFO during configuration of others 
+	inst_layer1_data_in_valid <= inst_rdbuf_out_rdy and recv_frame;
 	inst_layer1_out_fifo_room <= std_logic_vector(resize(unsigned(inst_fifo_1r_in_cnt), 16));
 
 
@@ -1157,7 +1158,7 @@ begin
 	i_fifo1r : circbuf_fast
 		generic map (
 			DATAW => LAYER1_WACCU,
-			DEPTH => 64,
+			DEPTH => DDRFIFOS_DEPTH,
 			CNTW  => FIFOS_CNTW
 		)
 		port map (
@@ -1177,7 +1178,7 @@ begin
 	inst_fifo_1r_clear   <= reset_reg;
 	inst_fifo_1r_in_data <= inst_layer1_data_out;
 	inst_fifo_1r_in_ack  <= inst_layer1_data_out_valid;
-	inst_fifo_1r_out_ack <= inst_recode_data_in_ready;
+	inst_fifo_1r_out_ack <= inst_recode_data_in_ready and recv_frame;
 
 
 	----------------------------------
@@ -1196,6 +1197,7 @@ begin
 			write_mode     => inst_recode_write_mode,
 			write_data     => inst_recode_write_data,
 			write_enable   => inst_recode_write_enable,
+			write_ready    => inst_recode_write_ready,
 			user_nbneu     => inst_recode_user_nbneu,
 			data_in        => inst_recode_data_in,
 			data_in_valid  => inst_recode_data_in_valid,
@@ -1212,7 +1214,7 @@ begin
 	inst_recode_write_enable  <= inst_rdbuf_out_rdy and recv_cfgr1;
 	inst_recode_user_nbneu    <= slv_reg1(15 downto 0);
 	inst_recode_data_in       <= inst_fifo_1r_out_data;
-	inst_recode_data_in_valid <= inst_fifo_1r_out_rdy;
+	inst_recode_data_in_valid <= inst_fifo_1r_out_rdy and recv_frame;
 	inst_recode_out_fifo_room <= std_logic_vector(resize(unsigned(inst_fifo_r2_in_cnt), 16));
 
 
@@ -1223,7 +1225,7 @@ begin
 	i_fifor2 : circbuf_fast
 		generic map (
 			DATAW => RECODE_WOUT,
-			DEPTH => 64,
+			DEPTH => DDRFIFOS_DEPTH,
 			CNTW  => FIFOS_CNTW
 		)
 		port map (
@@ -1243,7 +1245,7 @@ begin
 	inst_fifo_r2_clear   <= reset_reg;
 	inst_fifo_r2_in_data <= inst_recode_data_out;
 	inst_fifo_r2_in_ack  <= inst_recode_data_out_valid;
-	inst_fifo_r2_out_ack <= inst_layer2_data_in_ready;
+	inst_fifo_r2_out_ack <= inst_layer2_data_in_ready and recv_frame;
 
 
 	----------------------------------
@@ -1286,7 +1288,7 @@ begin
 	inst_layer2_user_fsize    <= slv_reg1(15 downto 0);
 	inst_layer2_user_nbneu    <= slv_reg2(15 downto 0);
 	inst_layer2_data_in       <= inst_fifo_r2_out_data;
-	inst_layer2_data_in_valid <= inst_fifo_r2_out_rdy;
+	inst_layer2_data_in_valid <= inst_fifo_r2_out_rdy and recv_frame;
 	inst_layer2_out_fifo_room <= std_logic_vector(resize(unsigned(inst_fifo_2o_in_cnt), 16));
 
 
@@ -1297,7 +1299,7 @@ begin
 	i_fifo2o : circbuf_fast
 		generic map (
 			DATAW => LAYER2_WACCU,
-			DEPTH => 64,
+			DEPTH => DDRFIFOS_DEPTH,
 			CNTW  => FIFOS_CNTW
 		)
 		port map (

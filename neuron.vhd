@@ -53,7 +53,7 @@ architecture synth of neuron is
 	-- Registre contenant l'accumulation du DSP
 	signal accu : signed(47 downto 0) := (others => '0');
 	-- Registre contenant la copy de l'accu
-	signal mirror : std_logic_vector(WACCU-1 downto 0);
+	signal mirror : std_logic_vector(WACCU-1 downto 0) := (others => '0');
 	
 	-- Registre m√©morisant si on se trouve dans un √tat de config
 	signal reg_config : std_logic := '0';

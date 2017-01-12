@@ -68,9 +68,11 @@ architecture synth of fsm is
 	constant OUT_FIFO_MARGIN : unsigned := to_unsigned(2,32);
 
 	-- state of mirror FSM
-	signal current_state_mirror, next_state_mirror : STATE;
+	signal current_state_mirror: STATE := SHIFT_MODE;
+	signal next_state_mirror : STATE := SHIFT_MODE;
 	-- state of neurons accumulation FSM
-	signal current_state_acc, next_state_acc : STATE;
+	signal current_state_acc: STATE := RESET_STATE;
+	signal next_state_acc : STATE := RESET_STATE;
 	-- address counter for weight loading or neurons classic accumulation
 	signal current_addr: std_logic_vector(WADDR-1 downto 0) := (others => '0');
 	signal next_addr: std_logic_vector(WADDR-1 downto 0) := (others => '0'); 
@@ -78,7 +80,8 @@ architecture synth of fsm is
 	signal current_shift_counter, next_shift_counter : std_logic_vector(15 downto 0);
 
 	-- flag to signal mirror that it can do its things
-	signal flag_mirror_chain, next_flag_mirror_chain : std_logic;
+	signal flag_mirror_chain : std_logic := '0';
+	signal next_flag_mirror_chain : std_logic := '0';
 	signal first_neuron : std_logic := '0';
 	signal next_first_neuron : std_logic := '0';
 begin
@@ -217,18 +220,26 @@ begin
 				next_state_acc <= MODE_FSM;
 
 			when MODE_ACC =>
-				if (sensor_we_mode = '0') then
-					next_state_acc <= WAIT_1D;
+				if (fsm_mode = '1') then
+					next_state_acc <= MODE_WEIGHT;
 				else
-					next_state_acc <= MODE_ACC;
+					if (sensor_we_mode = '0') then
+						next_state_acc <= WAIT_1D;
+					else
+						next_state_acc <= MODE_ACC;
+					end if;
 				end if;
 
 			when WAIT_1D =>
 				ctrl_accu_clear <= '1';
-				if (sensor_we_valid= '1') then
-					next_state_acc <= SEND_DATA;
+				if (fsm_mode = '1') then
+					next_state_acc <= MODE_WEIGHT;
 				else
-					next_state_acc <= WAIT_1D;
+					if (sensor_we_valid= '1') then
+						next_state_acc <= SEND_DATA;
+					else
+						next_state_acc <= WAIT_1D;
+					end if;
 				end if;
 
 			when SEND_DATA =>
@@ -254,7 +265,6 @@ begin
 				-- going again in acc loop again
 				next_state_acc <= MODE_FSM;
 			when MODE_FSM=>
-				next_addr <= current_addr;
 				if (fsm_mode = '1') then
 					next_state_acc <= MODE_WEIGHT;
 				else

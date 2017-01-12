@@ -47,11 +47,11 @@ ARCHITECTURE behavior OF test_nnlayer_fifo IS
 	constant WWEIGHT : natural := 32;
 	constant WACCU   : natural := 32;
 	-- Parameters for frame and number of neurons
-	constant FSIZE   : natural := 10;
-	constant NBNEU   : natural := 10;
+	constant FSIZE   : natural := 64;
+	constant NBNEU   : natural := 4;
 	constant DATAW : natural := WDATA;
-	constant DEPTH : natural := 8;
-	constant CNTW  : natural := 16;
+	constant DEPTH : natural := 64;
+	constant CNTW  : natural := 8;
 
 	component nnlayer is
 	generic (
@@ -257,6 +257,7 @@ begin
 	write_data <= fifo_out_data_1;
 	data_in <= fifo_out_data_1;
 	data_in_valid <= fifo_out_rdy_1;
+	write_enable <= fifo_out_rdy_1;
 
 	-- fifo 2 & nnlayer_1
 	fifo_in_data_2 <= data_out;
@@ -270,11 +271,12 @@ begin
 	recode_write_enable <= fifo_out_rdy_1;
 
 	-- special case for config recode!
-	fifo_out_ack_1 <= (recode_data_in_ready and recode_write_mode) or (data_in_ready and not recode_write_mode);
+	fifo_out_ack_1 <=
+			(write_mode and write_ready) or
+			(recode_write_mode and recode_write_ready) or
+			(not(write_mode or recode_write_mode) and data_in_ready);
+
 	recode_write_data <= fifo_out_data_1;
-
-
-
 
 
 	-- Clock process definitions( clock with 50% duty cycle is generated here.
@@ -289,10 +291,10 @@ begin
 	out_fifo_room_proc : process
 	begin
 		wait for clk_period;
-		out_fifo_room <= X"0007";
+		out_fifo_room <= X"000F";
 		wait for clk_period;
 		wait for clk_period;
-		out_fifo_room <= X"0002";
+		out_fifo_room <= X"000F";
 	end process;
 
 	stim_proc: process
@@ -305,11 +307,14 @@ begin
 		wait for 3*clk_period;
 		clear <= '0';
 		write_mode <= '1'; -- load weights
-		recode_out_fifo_room <= X"0008";
+		recode_write_mode <= '0'; 
+		recode_out_fifo_room <= X"000F";
 
 		-- load data into the fifo
 		fifo_in_data_1 <= X"00000001";
 		fifo_in_ack_1 <= '1'; 
+
+		wait for 5*clk_period;
 
 		while neurons < NBNEU loop
 			counter := 0;
@@ -343,6 +348,7 @@ begin
 		write_mode <= '0'; -- accu add 
 
 		counter := 0;
+		fifo_in_data_1 <= X"00000001";
 		while (counter < FSIZE) loop
 			wait for clk_period;
 			ASSERT ( data_in_ready = '1')
