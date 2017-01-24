@@ -225,18 +225,19 @@ architecture arch_imp of myaxifullmaster_v1_0_S00_AXI is
 	----------------------------------------------------
 
 	constant LAYER1_WDATA   : natural := 32;
-	constant LAYER1_WWEIGHT : natural := 32;
+	constant LAYER1_WWEIGHT : natural := 16;
 	constant LAYER1_WACCU   : natural := 32;
 	--constant LAYER1_FSIZE   : natural := 784;
 	constant LAYER1_FSIZE   : natural := 64;
 	constant LAYER1_NBNEU   : natural := 4;
 
 	constant RECODE_WDATA   : natural := LAYER1_WACCU;
+	constant RECODE_WWEIGHT : natural := 16;
 	constant RECODE_WOUT    : natural := 32;
 	constant RECODE_FSIZE   : natural := LAYER1_NBNEU;
 
 	constant LAYER2_WDATA   : natural := RECODE_WOUT;
-	constant LAYER2_WWEIGHT : natural := 32;
+	constant LAYER2_WWEIGHT : natural := 16;
 	constant LAYER2_WACCU   : natural := 32;
 	constant LAYER2_FSIZE   : natural := LAYER1_NBNEU;
 	constant LAYER2_NBNEU   : natural := 3;
@@ -307,7 +308,7 @@ architecture arch_imp of myaxifullmaster_v1_0_S00_AXI is
 			clear          : in  std_logic;
 			-- Ports for Write Enable
 			write_mode     : in  std_logic;
-			write_data     : in  std_logic_vector(WWEIGHT-1 downto 0);
+			write_data     : in  std_logic_vector(WDATA-1 downto 0);
 			write_enable   : in  std_logic;
 			write_ready    : out std_logic;
 			-- The user-specified frame size and number of neurons
@@ -331,6 +332,7 @@ architecture arch_imp of myaxifullmaster_v1_0_S00_AXI is
 	component recode is
 		generic(
 			WDATA : natural;
+			WWEIGHT : natural;
 			WOUT  : natural;
 			FSIZE : natural
 		);
@@ -371,7 +373,7 @@ architecture arch_imp of myaxifullmaster_v1_0_S00_AXI is
 	-- Signals to instantiate level 1
 	signal inst_layer1_clear          : std_logic;
 	signal inst_layer1_write_mode     : std_logic;
-	signal inst_layer1_write_data     : std_logic_vector(LAYER1_WWEIGHT-1 downto 0);
+	signal inst_layer1_write_data     : std_logic_vector(LAYER1_WDATA-1 downto 0);
 	signal inst_layer1_write_enable   : std_logic;
 	signal inst_layer1_write_ready    : std_logic;
 	signal inst_layer1_user_fsize     : std_logic_vector(15 downto 0);
@@ -423,7 +425,7 @@ architecture arch_imp of myaxifullmaster_v1_0_S00_AXI is
 	-- Signals to instantiate level 2
 	signal inst_layer2_clear          : std_logic;
 	signal inst_layer2_write_mode     : std_logic;
-	signal inst_layer2_write_data     : std_logic_vector(LAYER2_WWEIGHT-1 downto 0);
+	signal inst_layer2_write_data     : std_logic_vector(LAYER2_WDATA-1 downto 0);
 	signal inst_layer2_write_enable   : std_logic;
 	signal inst_layer2_write_ready    : std_logic;
 	signal inst_layer2_user_fsize     : std_logic_vector(15 downto 0);
@@ -1006,7 +1008,12 @@ begin
 				--slv_reg_rddata <= slv_reg7;
 
 			when b"1000" =>
-				--slv_reg_rddata <= slv_reg8;
+				slv_reg_rddata <= slv_reg8;
+				-- to pop data from the fifo between l1 and recode 
+				-- THE RECODE CAN NOT POP FIFO FROM THE FIFO
+				--slv_reg_rddata <= inst_rdbuf_out_data;
+				--slv_reg_rddata <= inst_fifo_1r_out_data;
+				--slv_reg_rddata <= inst_fifo_r2_out_data;
 
 			when b"1001" =>
 				--slv_reg_rddata <= slv_reg9;
@@ -1098,12 +1105,18 @@ begin
 
 		inst_rdbuf_clear   <= reset_reg;
 		inst_rdbuf_in_data <= mymaster_fifor_data;
+		-- for the debug
+		--inst_rdbuf_in_data <= slv_reg9;
 		inst_rdbuf_in_ack  <= mymaster_fifor_en;
+		-- for the debug
+		--inst_rdbuf_in_ack  <= '1' when ((slv_reg_wraddr = b"1001") and (slv_reg_wren = '1')) else '0';
 		inst_rdbuf_out_ack <=
 			(recv_cfgl1 and inst_layer1_write_ready) or
 			(recv_cfgr1 and inst_recode_write_ready) or
 			(recv_cfgl2 and inst_layer2_write_ready) or
 			(recv_frame and inst_layer1_data_in_ready);
+		-- for debug
+		--inst_rdbuf_out_ack <= '1' when ((slv_reg_rdaddr = b"1000") and (slv_reg_rden = '1')) else '0';
 
 
 	----------------------------------
@@ -1141,7 +1154,7 @@ begin
 	-- Set inputs
 	inst_layer1_clear         <= reset_reg;
 	inst_layer1_write_mode    <= recv_cfgl1;
-	inst_layer1_write_data    <= inst_rdbuf_out_data(inst_layer1_write_data'length-1 downto 0);
+	inst_layer1_write_data    <= inst_rdbuf_out_data(LAYER1_WDATA-1 downto 0);
 	inst_layer1_write_enable  <= inst_rdbuf_out_rdy and recv_cfgl1;
 	inst_layer1_user_fsize    <= slv_reg0(15 downto 0);
 	inst_layer1_user_nbneu    <= slv_reg1(15 downto 0);
@@ -1178,7 +1191,11 @@ begin
 	inst_fifo_1r_clear   <= reset_reg;
 	inst_fifo_1r_in_data <= inst_layer1_data_out;
 	inst_fifo_1r_in_ack  <= inst_layer1_data_out_valid;
-	inst_fifo_1r_out_ack <= inst_recode_data_in_ready and recv_frame;
+
+	inst_fifo_1r_out_ack <= (inst_recode_data_in_ready and recv_frame);
+	-- For debug, le recode can not read data from this fifo
+	--inst_fifo_1r_out_ack <= '1' when ((slv_reg_rdaddr = b"1000") and (slv_reg_rden = '1')) else '0';
+
 
 
 	----------------------------------
@@ -1188,6 +1205,7 @@ begin
 	i_recode : recode
 		generic map (
 			WDATA => RECODE_WDATA,
+			WWEIGHT => RECODE_WWEIGHT,
 			WOUT  => RECODE_WOUT,
 			FSIZE => RECODE_FSIZE
 		)
@@ -1245,7 +1263,10 @@ begin
 	inst_fifo_r2_clear   <= reset_reg;
 	inst_fifo_r2_in_data <= inst_recode_data_out;
 	inst_fifo_r2_in_ack  <= inst_recode_data_out_valid;
+
 	inst_fifo_r2_out_ack <= inst_layer2_data_in_ready and recv_frame;
+	-- for debug
+	--inst_fifo_r2_out_ack <= '1' when ((slv_reg_rdaddr = b"1000") and (slv_reg_rden = '1')) else '0';
 
 
 	----------------------------------

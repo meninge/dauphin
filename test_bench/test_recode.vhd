@@ -25,6 +25,7 @@ ARCHITECTURE behavior OF test_recode IS
 	component recode 
 	generic(
 		WDATA : natural := 32;
+		WWEIGHT : natural := WWEIGHT;
 		WOUT  : natural := 32;
 		FSIZE : natural := 10 -- warning, this is NB_NEU
 	);
@@ -52,6 +53,7 @@ ARCHITECTURE behavior OF test_recode IS
 	end component;
 
 	constant WDATA : natural := 32;
+	constant WWEIGHT : natural := 16;
 	constant WOUT  : natural := 32;
 	constant FSIZE : natural := 10; -- warning, this is NB_NEU
 	signal clk           :   std_logic := '0';

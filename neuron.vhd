@@ -9,7 +9,7 @@ entity neuron is
 	generic (
 		-- Parameters for the neurons
 		WDATA   : natural := 32;
-		WWEIGHT : natural := 32;
+		WWEIGHT : natural := 16;
 		WACCU   : natural := 32;
 		-- Parameters for the frame size
 		FSIZE   : natural := 784;
@@ -30,7 +30,7 @@ entity neuron is
 		-- Ports for Write Enable
 		we_prev         : in  std_logic;
 		we_next         : out std_logic;
-		write_data      : in  std_logic_vector(WWEIGHT-1 downto 0);
+		write_data      : in  std_logic_vector(WDATA-1 downto 0);
 		-- Data input, 2 bits
 		data_in         : in  std_logic_vector(WDATA-1 downto 0);
 		-- Scan chain to extract values
@@ -47,7 +47,7 @@ end neuron;
 
 architecture synth of neuron is
 	-- BRAM qui contient tous les co√©s
-	type ram_t is array (0 to FSIZE-1) of std_logic_vector(15 downto 0);
+	type ram_t is array (0 to FSIZE - 1) of std_logic_vector(WWEIGHT-1 downto 0);
 	signal ram : ram_t := (others => (others => '0'));
 
 	-- Registre contenant l'accumulation du DSP
@@ -57,6 +57,12 @@ architecture synth of neuron is
 	
 	-- Registre m√©morisant si on se trouve dans un √tat de config
 	signal reg_config : std_logic := '0';
+
+	-- output signals
+	signal out_sensor_shift    : std_logic := '0';
+	signal out_sensor_copy     : std_logic := '0';
+	signal out_sensor_we_mode  : std_logic := '0';
+	signal out_sensor_we_shift : std_logic := '0';
 begin
 	-------------------------------------------------------------------
 	-- Output ports
@@ -72,9 +78,10 @@ begin
 					accu <= (others => '0');
 				-- data available on input
 				elsif (ctrl_accu_add = '1') then
-					if ((unsigned(addr) >= 0) and (unsigned(addr) < FSIZE)) then
-						accu <= accu + signed(data_in(24 downto 0))*("00"&signed(ram(to_integer(unsigned(addr)))));
-					end if;
+					accu <= accu + signed(data_in(24 downto 0))*(resize(signed(ram(to_integer(unsigned(addr)))), 18));
+					--accu <= accu + (resize(signed(ram(to_integer(unsigned(addr)))),18));
+					--accu <= accu + signed(data_in(24 downto 0));
+					--accu <= (resize(signed(ram(0)),48));
 				end if;
 			end if;
 		end if;
@@ -110,11 +117,10 @@ begin
 			-- data available on input
 			if (ctrl_we_mode = '1') and (ctrl_we_valid = '1') then
 				if (reg_config = '1') then
-					-- our turn to get our config
-					if (unsigned(addr) >= 0 and unsigned(addr) < FSIZE) then
-						-- load all weight
-						ram(to_integer(unsigned(addr))) <= write_data(15 downto 0);
-					end if; 
+					-- load all weight
+					ram(to_integer(unsigned(addr))) <= write_data(WWEIGHT-1 downto 0);
+					--ram(0) <= std_logic_vector(signed(ram(0)) + to_signed(1, 16));
+					--ram(to_integer(unsigned(addr))) <= std_logic_vector(to_signed(1, 16));
 				end if;
 			end if;
 		end if;
@@ -123,46 +129,42 @@ begin
 	-- Tous les ports doivent etre affectÈ en combinatoire ici
 
 	-- Ceci est un process combinatoire
-	sensor : process (ctrl_we_mode, ctrl_we_shift, ctrl_we_valid, ctrl_shift_copy, ctrl_shift_en)
+	sensor : process (ctrl_we_mode, ctrl_we_shift, ctrl_shift_copy, ctrl_shift_en)
 	begin 
 		-- updating the reg_conf
 		if (ctrl_we_shift = '1') then
 			-- notify the fsm
-			sensor_we_shift <= '1';
+			out_sensor_we_shift <= '1';
 		else 
-			sensor_we_shift <= '0';
+			out_sensor_we_shift <= '0';
 		end if;
 		if (ctrl_we_mode = '1') then
-			sensor_we_mode <= '1';
+			out_sensor_we_mode <= '1';
 		else
-			sensor_we_mode <= '0';
+			out_sensor_we_mode <= '0';
 		end if;
 		-- we have to copy the accu reg into the miroir reg
 		if (ctrl_shift_copy = '1') then
-			sensor_copy <= '1';
+			out_sensor_copy <= '1';
 		else
-			sensor_copy <= '0';
+			out_sensor_copy <= '0';
 		end if;
 		-- we have to shift the miroir prev into the miroir next
 		if (ctrl_shift_en = '1') then
-			sensor_shift <= '1';
+			out_sensor_shift <= '1';
 		else 
-			sensor_shift <= '0';
+			out_sensor_shift <= '0';
 		end if;
-		-- not used, but need to be set
-		sensor_we_valid <= '1';
 	end process sensor;
 
 	we_next <= reg_config;
 	sh_data_out <= mirror;
+	-- not used, but need to be set
 	sensor_we_valid <= '1';
 
-	--we_next         <= '0';
-	--sh_data_out     <= (others => '0');
-	--sensor_shift    <= '0';
-	--sensor_copy     <= '0';
-	--sensor_we_mode  <= '0';
-	--sensor_we_shift <= '0';
-	--sensor_we_valid <= '0';
+	sensor_shift <= out_sensor_shift;
+	sensor_copy <= out_sensor_copy;
+	sensor_we_mode <= out_sensor_we_mode;
+	sensor_we_shift <= out_sensor_we_shift;
 
 end architecture;

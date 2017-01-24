@@ -31,7 +31,7 @@ ARCHITECTURE behavior OF test_fifo_recode_fifo IS
 		-- Parameters for the neurons
 	constant WDATA   : natural := 32;
 	constant WOUT : natural := WDATA;
-	constant WWEIGHT : natural := 32;
+	constant WWEIGHT : natural := 16;
 	constant WACCU   : natural := 32;
 	-- Parameters for frame and number of neurons
 	constant FSIZE   : natural := 10;
@@ -43,6 +43,7 @@ ARCHITECTURE behavior OF test_fifo_recode_fifo IS
 	component recode 
 	generic(
 		WDATA : natural := WDATA;
+		WWEIGHT : natural := WWEIGHT;
 		WOUT  : natural := WOUT;
 		FSIZE : natural := NBNEU -- warning, this is NB_NEU
 	);

@@ -27,7 +27,7 @@ entity nnlayer is
 		clear          : in  std_logic;
 		-- Ports for Write Enable
 		write_mode     : in  std_logic;
-		write_data     : in  std_logic_vector(WWEIGHT-1 downto 0) ;
+		write_data     : in  std_logic_vector(WDATA-1 downto 0) ;
 		write_enable   : in  std_logic;
 		write_ready    : out std_logic;
 		-- The user-specified frame size and number of neurons
@@ -56,7 +56,7 @@ architecture synth of nnlayer is
 	constant WADDR : natural := 10;
 
 	-- Arrays of signals to instantiate the neurons
-	signal arr_write_data : std_logic_vector(NBNEU*WWEIGHT-1 downto 0) := (others => '0');
+	signal arr_write_data : std_logic_vector(NBNEU*WDATA-1 downto 0) := (others => '0');
 	-- Input data
 	signal arr_data_in : std_logic_vector(NBNEU*WDATA-1 downto 0) := (others => '0');
 
@@ -113,7 +113,7 @@ architecture synth of nnlayer is
 		generic (
 			-- Parameters for the neurons
 			WDATA   : natural := 32;
-			WWEIGHT : natural := 32;
+			WWEIGHT : natural := 16;
 			WACCU   : natural := 32;
 			-- Parameters for the frame size
 			FSIZE   : natural := 784;
@@ -134,7 +134,7 @@ architecture synth of nnlayer is
 			-- Ports for Write Enable
 			we_prev         : in  std_logic;
 			we_next         : out std_logic;
-			write_data      : in  std_logic_vector(WWEIGHT-1 downto 0);
+			write_data      : in  std_logic_vector(WDATA-1 downto 0);
 			-- Data input, 2 bits
 			data_in         : in  std_logic_vector(WDATA-1 downto 0);
 			-- Scan chain to extract values
@@ -226,7 +226,7 @@ begin
 	-- Fanout distribution tree: write_data
 	i_buf_write_data: distribuf
 		generic map (
-			WDATA  => WWEIGHT,
+			WDATA  => WDATA,
 			NBOUT  => NBNEU,
 			FANOUT => FANOUT
 		)
@@ -383,7 +383,7 @@ begin
 				-- Ports for Write Enable
 				we_prev         => we_match(i),
 				we_next         => we_match(i + 1),
-				write_data      => arr_write_data((i+1)*WWEIGHT-1 downto i*WWEIGHT),
+				write_data      => arr_write_data((i+1)*WDATA-1 downto i*WDATA),
 				-- Data input, 2 bits
 				data_in         => arr_data_in((i+1)*WDATA-1 downto i*WDATA),
 				-- Scan chain to extract values

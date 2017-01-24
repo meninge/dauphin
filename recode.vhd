@@ -7,8 +7,9 @@ use ieee.numeric_std.all;
 
 entity recode is
 	generic(
-		WDATA : natural := 16;
-		WOUT  : natural := 16;
+		WDATA : natural := 32;
+		WWEIGHT : natural := 16;
+		WOUT  : natural := 32;
 		FSIZE : natural := 200 -- warning, this is NB_NEU
 	);
 	port(
@@ -42,11 +43,18 @@ architecture synth of recode is
 	signal next_state : STATE := RESET;
 
 	-- table containing constants to add to incoming neuron data.
-	type ram_t is array (0 to FSIZE-1) of std_logic_vector(WDATA-1 downto 0);
+	type ram_t is array (0 to FSIZE-1) of std_logic_vector(WWEIGHT-1 downto 0);
 	signal ram : ram_t := (others => (others => '0'));
 
-	signal addr : natural := 0;
-	signal next_addr : natural := 0;
+	signal addr : integer := 0;
+	signal next_addr : integer := 0;
+
+	-- output signals
+	signal out_write_ready : std_logic := '0';
+	signal out_data_in_ready : std_logic := '0';
+	signal out_data_out : std_logic_vector(WOUT-1 downto 0) := (others => '0');
+	signal out_data_out_valid : std_logic := '0';
+	signal cur_ram : std_logic_vector(WWEIGHT-1 downto 0);
 
 
 begin
@@ -58,29 +66,33 @@ begin
 				current_state <= RESET;
 			else
 				-- update the the ram 
-				if (current_state = WRITE_INPUT) then
-					ram(addr) <= write_data;
+				if (next_state = WRITE_INPUT) then
+					--ram(addr) <= write_data(WWEIGHT - 1 downto 0);
+					ram(addr) <= write_data(WWEIGHT - 1 downto 0);
 				end if;
 				current_state <= next_state;
 				addr <= next_addr;
 			end if;
+			cur_ram <= ram(addr);
 		end if;
 	end process;
 
 	-- Process combinatoire de la FSM
-	process (current_state, write_mode, write_enable, addr, out_fifo_room, data_in_valid, next_addr, write_data, ram, data_in)
+	process (current_state, write_mode, write_enable, addr, out_fifo_room, data_in_valid, write_data, cur_ram, data_in)
+		--variable tmp : signed(WOUT-1 downto 0) := (others => '0');
+		variable written : boolean := false;
 	begin
-			write_ready <= '0';
-			data_out <= (others => '0');
-			data_out_valid <= '0';
-			data_in_ready <= '0';
+			out_write_ready <= '0';
+			out_data_out <= (others => '0');
+			out_data_out_valid <= '0';
+			out_data_in_ready <= '0';
 			next_state <= RESET;
 			next_addr <= 0;
 
 			case current_state is
 				when RESET =>
 					next_addr <= 0;
-					if (write_mode = '1' and write_enable = '1') then
+					if (write_mode = '1' and write_enable = '1' and not written) then
 						next_state <= WRITE_INPUT;
 					elsif (write_mode = '0' and data_in_valid = '1') then
 						next_state <= DATA;
@@ -90,9 +102,10 @@ begin
 
 				when WRITE_INPUT =>
 					--ram(addr) <= write_data;
-					write_ready <= '1';
+					written := true;
+					out_write_ready <= '1';
 					next_addr <= addr + 1;
-					if (addr = FSIZE-1) then
+					if (addr = FSIZE - 1) then
 						next_state <= RESET;
 						next_addr <= 0;
 					elsif (write_enable = '1') then
@@ -102,6 +115,7 @@ begin
 					end if;
 
 				when WRITE_WAIT =>
+					next_addr <= addr;
 					if (write_enable = '1') then
 						next_state <= WRITE_INPUT;
 					else
@@ -109,16 +123,26 @@ begin
 					end if;
 				when DATA =>
 					if ( unsigned(out_fifo_room) > 0 and data_in_valid = '1') then
-						if (signed(data_in) + signed(ram(addr)) > 0) then
-							data_out <= std_logic_vector(resize(signed(data_in) + signed(ram(addr)), WOUT));
+						if (signed(data_in) + signed(cur_ram) > 0) then
+							--out_data_out <= "0000000000000000"&cur_ram;
+							--out_data_out <= std_logic_vector(resize(signed(data_in), WOUT));					-- NE MARCHE PAS
+							--out_data_out <= std_logic_vector(to_unsigned(addr, out_data_out'length));										-- MARCHE
+							--out_data_out <= data_in;										-- MARCHE
+							--out_data_out <= std_logic_vector(signed(data_in));							-- MARCHE
+							out_data_out <= std_logic_vector(signed(data_in) + signed(cur_ram));
+							--out_data_out <= std_logic_vector(signed(data_in) + signed(ram(addr)));				-- NE MARCHE PAS
+							--out_data_out <= std_logic_vector(resize(signed(data_in), WOUT) + resize(signed(ram(addr)), WOUT));
+							--out_data_out <= resize(signed(data_in), out_data_out'length);
 						else
-							data_out <= (others => '0');
+							out_data_out <= (others => '0');
 						end if;
-						data_out_valid <= '1';
-						data_in_ready <= '1';
-						next_addr <= addr +1;
+
+						out_data_out_valid <= '1';
+						out_data_in_ready <= '1';
+						next_addr <= addr + 1;
 
 						if (addr = FSIZE-1) then 
+							written := false;
 							next_state <= RESET;
 							next_addr <= 0;
 						else
@@ -138,6 +162,11 @@ begin
 	-- data_out       <= std_logic_vector(resize(signed(data_in), WOUT));
 
 	-- data_out_valid <= data_in_valid;
+
+	write_ready <= out_write_ready;
+	data_in_ready <= out_data_in_ready;
+	data_out <= out_data_out;
+	data_out_valid <= out_data_out_valid;
 
 end architecture;
 

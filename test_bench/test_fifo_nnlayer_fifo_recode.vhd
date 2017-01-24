@@ -44,7 +44,8 @@ ARCHITECTURE behavior OF test_nnlayer_fifo IS
 		-- Parameters for the neurons
 	constant WDATA   : natural := 32;
 	constant WOUT : natural := WDATA;
-	constant WWEIGHT : natural := 32;
+	-- Weight width for neurons and recode
+	constant WWEIGHT : natural := 16;
 	constant WACCU   : natural := 32;
 	-- Parameters for frame and number of neurons
 	constant FSIZE   : natural := 64;
@@ -68,7 +69,7 @@ ARCHITECTURE behavior OF test_nnlayer_fifo IS
 		clear          : in  std_logic;
 		-- Ports for Write Enable
 		write_mode     : in  std_logic;
-		write_data     : in  std_logic_vector(WWEIGHT-1 downto 0);
+		write_data     : in  std_logic_vector(WDATA-1 downto 0);
 		write_enable   : in  std_logic;
 		write_ready    : out std_logic;
 		-- The user-specified frame size and number of neurons
@@ -111,6 +112,7 @@ ARCHITECTURE behavior OF test_nnlayer_fifo IS
 	component recode 
 	generic(
 		WDATA : natural := WDATA;
+		WWEIGHT : natural := WWEIGHT;
 		WOUT  : natural := WOUT;
 		FSIZE : natural := NBNEU -- warning, this is NB_NEU
 	);
@@ -140,7 +142,7 @@ ARCHITECTURE behavior OF test_nnlayer_fifo IS
 
 -- nnlayer signals
 	signal write_mode     : std_logic := '0';
-	signal write_data     : std_logic_vector(WWEIGHT-1 downto 0);
+	signal write_data     : std_logic_vector(WDATA-1 downto 0);
 	signal write_enable   : std_logic := '0';
 	signal write_ready    : std_logic := '0';
 	signal user_fsize     : std_logic_vector(15 downto 0);
@@ -256,8 +258,8 @@ begin
 	-- fifo 1 & nnlayer_1
 	write_data <= fifo_out_data_1;
 	data_in <= fifo_out_data_1;
-	data_in_valid <= fifo_out_rdy_1;
-	write_enable <= fifo_out_rdy_1;
+	data_in_valid <= fifo_out_rdy_1 and not write_mode;
+	write_enable <= fifo_out_rdy_1 and write_mode;
 
 	-- fifo 2 & nnlayer_1
 	fifo_in_data_2 <= data_out;
@@ -291,10 +293,18 @@ begin
 	out_fifo_room_proc : process
 	begin
 		wait for clk_period;
-		out_fifo_room <= X"000F";
+		out_fifo_room <= X"00FF";
 		wait for clk_period;
 		wait for clk_period;
-		out_fifo_room <= X"000F";
+		out_fifo_room <= X"00FF";
+	end process;
+
+	data_in_fifo : process
+	begin
+		fifo_in_ack_1 <= '1'; 
+		wait for clk_period;
+		fifo_in_ack_1 <= '0';
+		wait for clk_period;
 	end process;
 
 	stim_proc: process
@@ -312,14 +322,12 @@ begin
 
 		-- load data into the fifo
 		fifo_in_data_1 <= X"00000001";
-		fifo_in_ack_1 <= '1'; 
 
 		wait for 5*clk_period;
 
 		while neurons < NBNEU loop
 			counter := 0;
 			fifo_in_data_1 <= X"00000001";
-			fifo_in_ack_1 <= '1'; 
 			while (counter < FSIZE) loop
 				wait for clk_period;
 				counter := counter + 1;
@@ -327,6 +335,9 @@ begin
 			end loop;
 			neurons := neurons +1;
 		end loop;
+
+		--wait for 8*clk_period;
+		wait for 30*clk_period;
 		
 		write_mode <= '0'; -- load weights
 
@@ -337,10 +348,10 @@ begin
 		while neurons < NBNEU loop
 			counter := 0;
 			fifo_in_data_1 <= X"00000001";
-			fifo_in_ack_1 <= '1'; 
 			neurons := neurons +1;
 			wait for clk_period;
 		end loop;
+
 		recode_write_mode <= '0'; -- accu add 
 
 
@@ -348,7 +359,7 @@ begin
 		write_mode <= '0'; -- accu add 
 
 		counter := 0;
-		fifo_in_data_1 <= X"00000001";
+		fifo_in_data_1 <= X"0000000F";
 		while (counter < FSIZE) loop
 			wait for clk_period;
 			ASSERT ( data_in_ready = '1')
