@@ -56,6 +56,8 @@ architecture synth of recode is
 	signal out_data_out_valid : std_logic := '0';
 	signal cur_ram : std_logic_vector(WWEIGHT-1 downto 0);
 
+	signal config_written : boolean := false;
+	signal next_config_written : boolean := false;
 
 begin
 	-- Sequential process
@@ -74,13 +76,13 @@ begin
 				addr <= next_addr;
 			end if;
 			cur_ram <= ram(addr);
+			config_written <= next_config_written;
 		end if;
 	end process;
 
 	-- Process combinatoire de la FSM
 	process (current_state, write_mode, write_enable, addr, out_fifo_room, data_in_valid, write_data, cur_ram, data_in)
 		--variable tmp : signed(WOUT-1 downto 0) := (others => '0');
-		variable written : boolean := false;
 	begin
 			out_write_ready <= '0';
 			out_data_out <= (others => '0');
@@ -88,12 +90,20 @@ begin
 			out_data_in_ready <= '0';
 			next_state <= RESET;
 			next_addr <= 0;
+			
+			if (config_written = false) then
+				next_config_written <= false;
+			else
+				next_config_written <= true;
+			end if;
 
 			case current_state is
 				when RESET =>
 					next_addr <= 0;
-					if (write_mode = '1' and write_enable = '1' and not written) then
-						next_state <= WRITE_INPUT;
+					if (write_mode = '1' and write_enable = '1') then
+						if (not(config_written)) then
+							next_state <= WRITE_INPUT;
+						end if;
 					elsif (write_mode = '0' and data_in_valid = '1') then
 						next_state <= DATA;
 					else
@@ -102,7 +112,7 @@ begin
 
 				when WRITE_INPUT =>
 					--ram(addr) <= write_data;
-					written := true;
+					next_config_written <= true;
 					out_write_ready <= '1';
 					next_addr <= addr + 1;
 					if (addr = FSIZE - 1) then
@@ -142,7 +152,7 @@ begin
 						next_addr <= addr + 1;
 
 						if (addr = FSIZE-1) then 
-							written := false;
+							next_config_written <= false;
 							next_state <= RESET;
 							next_addr <= 0;
 						else

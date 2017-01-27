@@ -98,6 +98,7 @@ architecture synth of fsm is
 	signal out_n0_we_prev : std_logic := '0';
 
 	signal config_written : boolean := false;
+	signal next_config_written : boolean := false;
 begin
 
 	------------------------
@@ -127,6 +128,8 @@ begin
 
 				first_neuron <= next_first_neuron;
 
+				config_written <= next_config_written;
+
 			end if;
 		end if;
 	end process;
@@ -153,7 +156,13 @@ begin
 		next_state_acc <= MODE_FSM;
 		next_flag_mirror_chain <= '0';
 		next_first_neuron <= '0';
-		config_written <= config_written;
+
+		if (config_written = false) then
+			next_config_written <= false;
+		else
+			next_config_written <= true;
+		end if;
+
 
 		case current_state_acc is
 			when RESET_STATE =>
@@ -234,7 +243,7 @@ begin
 			-- on a configure tous les neurones
 			-- on repasse en choix de mode 
 			when END_CONFIG =>
-				config_written <= true;
+				next_config_written <= true;
 				next_state_acc <= MODE_FSM;
 
 			-- on est en mode accumulation
@@ -287,7 +296,7 @@ begin
 					next_state_acc <= WAIT_DATA;
 				end if;
 			when END_ACC =>
-				config_written <= false;
+				next_config_written <= false;
 				-- need to pass flag to mirror FSM
 				next_flag_mirror_chain <= '1';
 				-- mode switching before
