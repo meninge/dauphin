@@ -282,11 +282,11 @@ begin
 			when SEND_DATA =>
 				out_ctrl_accu_add <= '1';
 				-- incr addr for next round
-				next_addr <= std_logic_vector( unsigned(current_addr) + 1);
 				if ( unsigned(current_addr) = FSIZE - 1 ) then
 					next_state_acc <= END_ACC;
 				else
 					next_state_acc <= WAIT_DATA;
+					next_addr <= std_logic_vector( unsigned(current_addr) + 1);
 				end if;
 			when WAIT_DATA =>
 				next_addr <= current_addr;

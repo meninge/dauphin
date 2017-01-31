@@ -47,14 +47,17 @@ end neuron;
 
 architecture synth of neuron is
 	-- BRAM qui contient tous les coÃ©s
-	type ram_t is array (0 to FSIZE - 1) of std_logic_vector(WWEIGHT-1 downto 0);
-	signal ram : ram_t := (others => (others => '0'));
+
+	--type ram_type is array (0 to FSIZE - 1) of std_logic_vector(WWEIGHT-1 downto 0);
+	--signal ram : ram_type := (others => (others => '0'));
+	--attribute ram_style : string;Synthesis
+	--attribute ram_style of ram : signal is "block";
 
 	-- Registre contenant l'accumulation du DSP
 	signal accu : signed(47 downto 0) := (others => '0');
 	-- Registre contenant la copy de l'accu
 	signal mirror : std_logic_vector(WACCU-1 downto 0) := (others => '0');
-	
+
 	-- Registre mÃ©morisant si on se trouve dans un Ãtat de config
 	signal reg_config : std_logic := '0';
 
@@ -63,7 +66,46 @@ architecture synth of neuron is
 	signal out_sensor_copy     : std_logic := '0';
 	signal out_sensor_we_mode  : std_logic := '0';
 	signal out_sensor_we_shift : std_logic := '0';
+
+	signal weight : std_logic_vector(WWEIGHT-1 downto 0);
+
+	component ram is
+		generic (
+				WDATA : natural := 16;
+				SIZE   : natural := 784;
+				WADDR   : natural := 10
+
+			);
+		port (	clk : in std_logic;
+			we : in std_logic;
+			en : in std_logic;
+			addr : in std_logic_vector(WADDR-1 downto 0);
+			di : in std_logic_vector(WDATA-1 downto 0);
+			do : out std_logic_vector(WDATA-1 downto 0));
+	end component;
+	signal we_ram : std_logic := '0';
+	signal en_ram : std_logic := '0';
 begin
+	-------------------------------------------------------------------
+	-- instanciation of component
+	-------------------------------------------------------------------
+	i_ram: ram
+	generic map (
+
+			WDATA  => WWEIGHT,
+			SIZE => FSIZE,
+			WADDR => WADDR
+		)
+	port map (
+		clk	=> clk,
+		we	=> we_ram,
+		en	=> en_ram,
+		addr	=> addr,
+		-- TODO : METTRE UN RESIZE 
+		di	=> write_data(WWEIGHT-1 downto 0),
+		do	=> weight
+		);
+
 	-------------------------------------------------------------------
 	-- Output ports
 	-------------------------------------------------------------------
@@ -76,12 +118,9 @@ begin
 				-- we need to clear accu
 				if (ctrl_accu_clear = '1') then
 					accu <= (others => '0');
-				-- data available on input
+					-- data available
 				elsif (ctrl_accu_add = '1') then
-					accu <= accu + signed(data_in(24 downto 0))*(resize(signed(ram(to_integer(unsigned(addr)))), 18));
-					--accu <= accu + (resize(signed(ram(to_integer(unsigned(addr)))),18));
-					--accu <= accu + signed(data_in(24 downto 0));
-					--accu <= (resize(signed(ram(0)),48));
+					accu <= accu + signed(data_in(24 downto 0))*(resize(signed(weight), 18));
 				end if;
 			end if;
 		end if;
@@ -100,6 +139,7 @@ begin
 		end if;
 	end process;
 
+
 	reg_conf : process (clk)
 	begin 
 		if rising_edge(clk) then
@@ -107,24 +147,27 @@ begin
 				-- update the reg_config
 				reg_config <= we_prev;
 			end if;
-				
+
 		end if;
 	end process reg_conf;
 
-	load_weight : process (clk)
-	begin 
-		if rising_edge(clk) then
-			-- data available on input
-			if (ctrl_we_mode = '1') and (ctrl_we_valid = '1') then
-				if (reg_config = '1') then
-					-- load all weight
-					ram(to_integer(unsigned(addr))) <= write_data(WWEIGHT-1 downto 0);
-					--ram(0) <= std_logic_vector(signed(ram(0)) + to_signed(1, 16));
-					--ram(to_integer(unsigned(addr))) <= std_logic_vector(to_signed(1, 16));
-				end if;
-			end if;
-		end if;
-	end process load_weight;
+
+	--load_weight : process (clk)
+	--begin 
+	--	if rising_edge(clk) then
+	--		-- data available on input
+	--		if (ctrl_we_valid = '1') then
+	--			if (ctrl_we_mode = '1') then
+	--				if (reg_config = '1') then
+	--					-- load all weight
+	--					ram(to_integer(unsigned(addr))) <= write_data(WWEIGHT-1 downto 0);
+	--				end if;
+	--			else
+	--				weight <= ram(to_integer(unsigned(addr)));
+	--			end if;
+	--		end if;
+	--	end if;
+	--end process load_weight;
 
 	-- Tous les ports doivent etre affecté en combinatoire ici
 
@@ -157,6 +200,9 @@ begin
 		end if;
 	end process sensor;
 
+
+	en_ram <= '1';
+	we_ram <= ctrl_we_mode and reg_config and not(ctrl_we_shift);
 	we_next <= reg_config;
 	sh_data_out <= mirror;
 	-- not used, but need to be set
@@ -167,4 +213,5 @@ begin
 	sensor_we_mode <= out_sensor_we_mode;
 	sensor_we_shift <= out_sensor_we_shift;
 
+				
 end architecture;

@@ -34,8 +34,8 @@ ARCHITECTURE behavior OF test_fifo_recode_fifo IS
 	constant WWEIGHT : natural := 16;
 	constant WACCU   : natural := 32;
 	-- Parameters for frame and number of neurons
-	constant FSIZE   : natural := 10;
-	constant NBNEU   : natural := 10;
+	constant FSIZE   : natural := 4;
+	constant NBNEU   : natural := 4;
 	constant DATAW : natural := 32;
 	constant DEPTH : natural := 8;
 	constant CNTW  : natural := 16;
@@ -182,7 +182,7 @@ begin
 	data_in <= fifo_out_data_1;
 	data_in_valid <= fifo_out_rdy_1;
 	--data_in_ready <= fifo_out_ack;
-	fifo_out_ack_1 <= data_in_ready;
+	fifo_out_ack_1 <= data_in_ready or write_ready;
 
 	fifo_in_ack_2 <= data_out_valid;
 	fifo_in_data_2 <= data_out;
@@ -204,33 +204,60 @@ begin
 		-- TEST CHARGEMENT DES POIDS
 		-- reset
 		clear <= '1';
+	   fifo_in_data_1 <= std_logic_vector(to_unsigned(0, 32));
+	fifo_in_ack_1 <= '0'; 
+
 		wait for 3*clk_period;
 		clear <= '0';
 		write_mode <= '1'; -- load weights
-
 		-- load data into the fifo
-		fifo_in_data_1 <= X"00000001";
-		fifo_in_ack_1 <= '1'; 
-
-		while neurons < NBNEU loop
+		  fifo_in_data_1 <= std_logic_vector(to_unsigned(3, 32));
+		  fifo_in_ack_1 <= '1'; 
+		     --while neurons < NBNEU loop
 			counter := 0;
-			fifo_in_data_1 <= X"00000001";
+			neurons := neurons + 1;
+			wait for clk_period;
+			wait for clk_period;
+
+			counter := 0;
+			fifo_in_data_1 <= std_logic_vector(to_signed(4, 32));
 			fifo_in_ack_1 <= '1'; 
 			neurons := neurons +1;
 			wait for clk_period;
-		end loop;
-		write_mode <= '0'; -- accu add 
+			counter := 0;
+			fifo_in_data_1 <= std_logic_vector(to_signed(5, 32));
+			fifo_in_ack_1 <= '1'; 
+			neurons := neurons +1;
+			wait for clk_period;
+			counter := 0;
+			fifo_in_data_1 <= std_logic_vector(to_signed(1, 32));
+			fifo_in_ack_1 <= '1'; 
+			neurons := neurons +1;
+			wait for clk_period;
+			fifo_in_data_1 <= std_logic_vector(to_signed(10, 32));
+			fifo_in_ack_1 <= '0'; 
 
-		wait for 100 * clk_period;
+		--end loop;
+			wait for clk_period;
+			wait for clk_period;
+			wait for clk_period;
+			wait for clk_period;
+			wait for clk_period;
+		write_mode <= '0'; -- accu add 
+fifo_in_ack_1 <= '1';
+		wait for clk_period;
 
 		-- TEST MODE ACCUMULATION 
 		write_mode <= '0'; -- accu add 
+		fifo_in_data_1 <= std_logic_vector(to_unsigned(64, 32));
 
 		counter := 0;
 		while (counter < FSIZE) loop
 			wait for clk_period;
+			fifo_in_data_1 <= std_logic_vector(to_unsigned(128, 32));
 			counter := counter + 1;
 			wait for clk_period;
+			fifo_in_data_1 <= std_logic_vector(to_unsigned(64, 32));
 		end loop;
 
 		wait;

@@ -316,6 +316,27 @@ begin
 		clear <= '1';
 		wait for 3*clk_period;
 		clear <= '0';
+		write_mode <= '0'; -- load weights
+
+		-- recode write config
+		recode_write_mode <= '1'; -- load weights
+
+		neurons := 0;
+
+		counter := 0;
+		fifo_in_data_1 <= X"FFFFFC18";
+		wait for clk_period;
+		wait for clk_period;
+		fifo_in_data_1 <= X"FFFFFC18";
+		wait for clk_period;
+		wait for clk_period;
+		fifo_in_data_1 <= X"FFFFFC18";
+		wait for clk_period;
+		wait for clk_period;
+		fifo_in_data_1 <= X"00000032";
+
+		recode_write_mode <= '0'; -- accu add 
+
 		write_mode <= '1'; -- load weights
 		recode_write_mode <= '0'; 
 		recode_out_fifo_room <= X"000F";
@@ -340,20 +361,6 @@ begin
 		wait for 30*clk_period;
 		
 		write_mode <= '0'; -- load weights
-
-		-- recode write config
-		recode_write_mode <= '1'; -- load weights
-
-		neurons := 0;
-		while neurons < NBNEU loop
-			counter := 0;
-			fifo_in_data_1 <= X"00000001";
-			neurons := neurons +1;
-			wait for clk_period;
-		end loop;
-
-		recode_write_mode <= '0'; -- accu add 
-
 
 		-- TEST MODE ACCUMULATION 
 		write_mode <= '0'; -- accu add 

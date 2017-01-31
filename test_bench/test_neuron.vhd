@@ -25,7 +25,7 @@ ARCHITECTURE behavior OF test_neuron IS
 	component neuron
 		generic (
 		-- Parameters for the neurons
-		WDATA   : natural := 16;
+		WDATA   : natural := 32;
 		WWEIGHT : natural := 16;
 		WACCU   : natural := 32;
 		-- Parameters for the frame size
@@ -47,7 +47,7 @@ ARCHITECTURE behavior OF test_neuron IS
 		-- Ports for Write Enable
 		we_prev         : in  std_logic;
 		we_next         : out std_logic;
-		write_data      : in  std_logic_vector(WWEIGHT-1 downto 0);
+		write_data      : in  std_logic_vector(WDATA-1 downto 0);
 		-- Data input, 2 bits
 		data_in         : in  std_logic_vector(WDATA-1 downto 0);
 		-- Scan chain to extract values
@@ -76,9 +76,9 @@ ARCHITECTURE behavior OF test_neuron IS
 	-- Ports for Write Enable
 	signal we_prev      :   std_logic := '0';
 	signal we_next      :  std_logic := '0';
-	signal write_data   :  std_logic_vector(15 downto 0);
+	signal write_data   :  std_logic_vector(31 downto 0);
 	-- Data input, 2 bits
-	signal data_in         : std_logic_vector(15 downto 0);
+	signal data_in         : std_logic_vector(31 downto 0);
 	-- Scan chain to extract values
 	signal sh_data_in      : std_logic_vector(31 downto 0);
 	signal sh_data_out     : std_logic_vector(31 downto 0);
@@ -183,7 +183,9 @@ begin
 		wait for clk_period;
 		ctrl_accu_clear <= '0';
 		ctrl_accu_add <= '1';
-		data_in <= X"0001";
+		data_in <= X"00000001";
+		addr <= std_logic_vector(to_unsigned(0, addr'length));
+		
 
 		for I in 0 to 783 loop
 			addr <= std_logic_vector(to_unsigned(I, addr'length));

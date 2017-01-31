@@ -35,8 +35,8 @@ ARCHITECTURE behavior OF test_fifo_nnlayer IS
 	constant WWEIGHT : natural := 16;
 	constant WACCU   : natural := 32;
 	-- Parameters for frame and number of neurons
-	constant FSIZE   : natural := 10;
-	constant NBNEU   : natural := 10;
+	constant FSIZE   : natural := 64;
+	constant NBNEU   : natural := 4;
 	constant DATAW : natural := 32;
 	constant DEPTH : natural := 8;
 	constant CNTW  : natural := 16;
@@ -56,7 +56,7 @@ ARCHITECTURE behavior OF test_fifo_nnlayer IS
 		clear          : in  std_logic;
 		-- Ports for Write Enable
 		write_mode     : in  std_logic;
-		write_data     : in  std_logic_vector(WWEIGHT-1 downto 0);
+		write_data     : in  std_logic_vector(WDATA-1 downto 0);
 		write_enable   : in  std_logic;
 		write_ready    : out std_logic;
 		-- The user-specified frame size and number of neurons
@@ -104,7 +104,7 @@ end component;
 	signal clear          : std_logic := '0';
 		-- Ports for Write Enable
 	signal write_mode     : std_logic := '0';
-	signal write_data     : std_logic_vector(WWEIGHT-1 downto 0);
+	signal write_data     : std_logic_vector(WDATA-1 downto 0);
 	signal write_enable   : std_logic := '0';
 	signal write_ready    : std_logic := '0';
 		-- The user-specified frame size and number of neurons
@@ -176,7 +176,7 @@ begin
 	data_in <= fifo_out_data;
 	data_in_valid <= fifo_out_rdy;
 	--data_in_ready <= fifo_out_ack;
-	fifo_out_ack <= data_in_ready;
+	fifo_out_ack <= data_in_ready or write_ready;
 
 	-- Clock process definitions( clock with 50% duty cycle is generated here.
 	clk_process : process
@@ -207,19 +207,16 @@ begin
 		clear <= '0';
 		write_mode <= '1'; -- load weights
 
-		-- load data into the fifo
-		fifo_in_data <= X"00000001";
-		fifo_in_ack <= '1'; 
-		wait for 10 * clk_period;
-		fifo_in_ack <= '0'; -- no more data into the fifo
 
 		while neurons < NBNEU loop
 			counter := 0;
-			fifo_in_data <= X"00000001";
-			fifo_in_ack <= '1'; 
 			while (counter < FSIZE) loop
+			    fifo_in_data <= std_logic_vector(to_signed(counter + 10, 32));
+                fifo_in_ack <= '1'; 
 				wait for clk_period;
 				counter := counter + 1;
+				fifo_in_data <= std_logic_vector(to_signed(counter*10 + 10, 32));
+                fifo_in_ack <= '1'; 
 				wait for clk_period;
 			end loop;
 			neurons := neurons +1;

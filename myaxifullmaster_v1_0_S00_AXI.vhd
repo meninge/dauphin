@@ -227,9 +227,10 @@ architecture arch_imp of myaxifullmaster_v1_0_S00_AXI is
 	constant LAYER1_WDATA   : natural := 32;
 	constant LAYER1_WWEIGHT : natural := 16;
 	constant LAYER1_WACCU   : natural := 32;
-	constant LAYER1_FSIZE   : natural := 784;
-	--constant LAYER1_FSIZE   : natural := 64;
-	constant LAYER1_NBNEU   : natural := 100;
+	--constant LAYER1_FSIZE   : natural := 784;
+	constant LAYER1_FSIZE   : natural := 64;
+	--constant LAYER1_NBNEU   : natural := 100;
+	constant LAYER1_NBNEU   : natural := 4;
 
 	constant RECODE_WDATA   : natural := LAYER1_WACCU;
 	constant RECODE_WWEIGHT : natural := 16;
@@ -240,7 +241,8 @@ architecture arch_imp of myaxifullmaster_v1_0_S00_AXI is
 	constant LAYER2_WWEIGHT : natural := 16;
 	constant LAYER2_WACCU   : natural := 32;
 	constant LAYER2_FSIZE   : natural := LAYER1_NBNEU;
-	constant LAYER2_NBNEU   : natural := 10;
+	constant LAYER2_NBNEU   : natural := 3;
+	--constant LAYER2_NBNEU   : natural := 10;
 
 	signal req_start_recv : std_logic := '0';
 	signal req_start_send : std_logic := '0';
@@ -1011,9 +1013,9 @@ begin
 				slv_reg_rddata <= slv_reg8;
 				-- to pop data from the fifo between l1 and recode 
 				-- THE RECODE CAN NOT POP FIFO FROM THE FIFO
-				--slv_reg_rddata <= inst_rdbuf_out_data;
-				--slv_reg_rddata <= inst_fifo_1r_out_data;
+				-- slv_reg_rddata <= inst_fifo_1r_out_data;
 				--slv_reg_rddata <= inst_fifo_r2_out_data;
+				-- slv_reg_rddata <= inst_rdbuf_out_data;
 
 			when b"1001" =>
 				--slv_reg_rddata <= slv_reg9;

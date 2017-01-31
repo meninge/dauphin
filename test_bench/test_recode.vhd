@@ -1,7 +1,7 @@
 ----------------------------------------------------------------
 -- uut:
 --	recode.vhd
--- description: 
+-- description:
 --	simple test_bench to verify recode behavior in simple cases
 -- expected result:
 --	recode should be configurable, and in simple mode
@@ -15,14 +15,20 @@ Library UNISIM;
 use UNISIM.vcomponents.all;
 library UNIMACRO;
 use unimacro.Vcomponents.all;
+use ieee.numeric_std.all;
 
 -- entity declaration for your testbench.Dont declare any ports here
-ENTITY test_recode IS 
+ENTITY test_recode IS
 	END test_recode;
 
 ARCHITECTURE behavior OF test_recode IS
 	-- add component under test
-	component recode 
+	constant WDATA : natural := 32;
+	constant WWEIGHT : natural := 16;
+	constant WOUT  : natural := 32;
+	constant FSIZE : natural := 10; -- warning, this is NB_NEU
+
+	component recode
 	generic(
 		WDATA : natural := 32;
 		WWEIGHT : natural := WWEIGHT;
@@ -52,10 +58,6 @@ ARCHITECTURE behavior OF test_recode IS
 	);
 	end component;
 
-	constant WDATA : natural := 32;
-	constant WWEIGHT : natural := 16;
-	constant WOUT  : natural := 32;
-	constant FSIZE : natural := 10; -- warning, this is NB_NEU
 	signal clk           :   std_logic := '0';
 	-- clock period definitions
 	constant clk_period : time := 1 ns;
@@ -114,9 +116,8 @@ begin
 	-- Stimulus process
 	stim_proc: process
 		variable counter : natural := 0;
-	begin         
+	begin
 		wait for 1 ns;
-		
 		-- reset component
 		addr_clear <= '1';
 		data_in_valid <= '0';
@@ -126,14 +127,14 @@ begin
 		addr_clear <= '0';
 		write_mode <= '1';
 		wait for 1 ns;
-		
 		-- chargement des constantes à ajouter dans le recode
 		while counter < 10 loop
-			write_data <= X"0000000A";
+			write_data <= std_logic_vector(to_unsigned(counter + 10,32));
 			write_enable <= '1';
 			wait for clk_period;
 			counter := counter +1;
 		end loop;
+		write_data <= std_logic_vector(to_unsigned(1220,32));
 
 		-- mode de recode, traitement des données
 		write_mode <= '0';
@@ -143,7 +144,7 @@ begin
 
 		wait for 10 * clk_period;
 
-		-- simule que la fifo de sortie est pleine 
+		-- simule que la fifo de sortie est pleine
 		out_fifo_room <= X"0000";
 		wait for 10 * clk_period;
 
