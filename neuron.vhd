@@ -69,6 +69,7 @@ architecture synth of neuron is
 
 	signal weight : std_logic_vector(WWEIGHT-1 downto 0);
 
+	signal write_data_in : std_logic_vector(WWEIGHT-1 downto 0);
 	component ram is
 		generic (
 				WDATA : natural := 16;
@@ -101,8 +102,8 @@ begin
 		we	=> we_ram,
 		en	=> en_ram,
 		addr	=> addr,
-		-- TODO : METTRE UN RESIZE 
-		di	=> write_data(WWEIGHT-1 downto 0),
+		-- TODO : METTRE UN RESIZE
+		di	=> write_data_in,
 		do	=> weight
 		);
 
@@ -212,6 +213,9 @@ begin
 	sensor_copy <= out_sensor_copy;
 	sensor_we_mode <= out_sensor_we_mode;
 	sensor_we_shift <= out_sensor_we_shift;
+
+	-- to get right conversion for the BRAM
+	write_data_in <= std_logic_vector(resize(signed(write_data), WWEIGHT));
 
 				
 end architecture;
