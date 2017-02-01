@@ -5,7 +5,7 @@
 --	fsm.vhd
 --	distribuf.vhd
 --	circbuf_fast.vhd
--- description: 
+-- description:
 --	simple test_bench to verify nnlayer behavior in normal conditions
 --	with a fifo just before
 -- expected result:
@@ -25,7 +25,7 @@ use unimacro.Vcomponents.all;
 use ieee.numeric_std.all;
 
 -- entity declaration for your testbench.Dont declare any ports here
-ENTITY test_fifo_nnlayer IS 
+ENTITY test_fifo_nnlayer IS
 	END test_fifo_nnlayer;
 
 ARCHITECTURE behavior OF test_fifo_nnlayer IS
@@ -49,7 +49,7 @@ ARCHITECTURE behavior OF test_fifo_nnlayer IS
 		WACCU   : natural := WACCU;
 		-- Parameters for frame and number of neurons
 		FSIZE   : natural := FSIZE;
-		NBNEU   : natural := NBNEU 
+		NBNEU   : natural := NBNEU
 	);
 	port (
 		clk            : in  std_logic;
@@ -156,9 +156,9 @@ begin
 		end_of_frame => end_of_frame,
 		-- The output data enters a FIFO. This indicates the available room.
 		out_fifo_room => out_fifo_room
-		 );
+		);
 
-	fifo: circbuf_fast 
+	fifo: circbuf_fast
 	port map (
 		reset         => clear,
 		clk           => clk,
@@ -171,7 +171,7 @@ begin
 		fifo_out_ack  => fifo_out_ack,
 		fifo_out_cnt  => fifo_out_cnt
 	);
-	
+
 	write_data <= fifo_out_data;
 	data_in <= fifo_out_data;
 	data_in_valid <= fifo_out_rdy;
@@ -199,8 +199,11 @@ begin
 	stim_proc: process
 		variable counter : integer := 0;
 		variable neurons : integer := 0;
-	begin         
-		-- TEST CHARGEMENT DES POIDS
+	begin
+		-------------------------------
+		-- TEST CHARGEMENT DES POIDS --
+		-------------------------------
+
 		-- reset
 		clear <= '1';
 		wait for 3*clk_period;
@@ -211,12 +214,12 @@ begin
 		while neurons < NBNEU loop
 			counter := 0;
 			while (counter < FSIZE) loop
-			    fifo_in_data <= std_logic_vector(to_signed(counter + 10, 32));
-                fifo_in_ack <= '1'; 
+				fifo_in_data <= std_logic_vector(to_signed(counter + 10, 32));
+				fifo_in_ack <= '1';
 				wait for clk_period;
 				counter := counter + 1;
 				fifo_in_data <= std_logic_vector(to_signed(counter*10 + 10, 32));
-                fifo_in_ack <= '1'; 
+				fifo_in_ack <= '1';
 				wait for clk_period;
 			end loop;
 			neurons := neurons +1;
@@ -225,14 +228,15 @@ begin
 
 		wait for 100 * clk_period;
 
-		-- TEST MODE ACCUMULATION 
-		write_mode <= '0'; -- accu add 
+		----------------------------
+		-- TEST MODE ACCUMULATION --
+		----------------------------
+
+		write_mode <= '0'; -- accu add
 
 		counter := 0;
 		while (counter < FSIZE) loop
 			wait for clk_period;
-			ASSERT ( data_in_ready = '1')
-			REPORT "data_in_ready != 1";
 			counter := counter + 1;
 			wait for clk_period;
 		end loop;

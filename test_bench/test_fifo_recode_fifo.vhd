@@ -2,7 +2,7 @@
 -- uut:
 --	recode.vhd
 --	circbuf_fast.vhd
--- description: 
+-- description:
 --	simple test_bench to verify recode behavior in normal conditions
 --	with a fifo just before
 --	and a fifo just after
@@ -23,7 +23,7 @@ use unimacro.Vcomponents.all;
 use ieee.numeric_std.all;
 
 -- entity declaration for your testbench.Dont declare any ports here
-ENTITY test_fifo_recode_fifo IS 
+ENTITY test_fifo_recode_fifo IS
 	END test_fifo_recode_fifo;
 
 ARCHITECTURE behavior OF test_fifo_recode_fifo IS
@@ -40,7 +40,7 @@ ARCHITECTURE behavior OF test_fifo_recode_fifo IS
 	constant DEPTH : natural := 8;
 	constant CNTW  : natural := 16;
 
-	component recode 
+	component recode
 	generic(
 		WDATA : natural := WDATA;
 		WWEIGHT : natural := WWEIGHT;
@@ -132,7 +132,7 @@ end component;
 
 begin
 
-	fifo_1: circbuf_fast 
+	fifo_1: circbuf_fast
 	port map (
 		reset         => clear,
 		clk           => clk,
@@ -146,7 +146,7 @@ begin
 		fifo_out_cnt  => fifo_out_cnt_1
 	);
 
-	fifo_2: circbuf_fast 
+	fifo_2: circbuf_fast
 	port map (
 		reset         => clear,
 		clk           => clk,
@@ -160,7 +160,7 @@ begin
 		fifo_out_cnt  => fifo_out_cnt_2
 	);
 
-	recode_1 : recode 
+	recode_1 : recode
 	port map (
 		clk => clk,
 		addr_clear => addr_clear,
@@ -176,7 +176,7 @@ begin
 		data_out_valid => data_out_valid,
 		out_fifo_room => out_fifo_room
 	);
-	
+
 	write_data <= fifo_out_data_1;
 	write_enable <= fifo_out_rdy_1;
 	data_in <= fifo_out_data_1;
@@ -200,55 +200,61 @@ begin
 	stim_proc: process
 		variable counter : integer := 0;
 		variable neurons : integer := 0;
-	begin         
-		-- TEST CHARGEMENT DES POIDS
+	begin
+		-------------------------------
+		-- TEST CHARGEMENT DES POIDS --
+		-------------------------------
+
 		-- reset
 		clear <= '1';
-	   fifo_in_data_1 <= std_logic_vector(to_unsigned(0, 32));
-	fifo_in_ack_1 <= '0'; 
+		fifo_in_data_1 <= std_logic_vector(to_unsigned(0, 32));
+		fifo_in_ack_1 <= '0';
 
 		wait for 3*clk_period;
 		clear <= '0';
 		write_mode <= '1'; -- load weights
 		-- load data into the fifo
-		  fifo_in_data_1 <= std_logic_vector(to_unsigned(3, 32));
-		  fifo_in_ack_1 <= '1'; 
-		     --while neurons < NBNEU loop
-			counter := 0;
-			neurons := neurons + 1;
-			wait for clk_period;
-			wait for clk_period;
-
-			counter := 0;
-			fifo_in_data_1 <= std_logic_vector(to_signed(4, 32));
-			fifo_in_ack_1 <= '1'; 
-			neurons := neurons +1;
-			wait for clk_period;
-			counter := 0;
-			fifo_in_data_1 <= std_logic_vector(to_signed(5, 32));
-			fifo_in_ack_1 <= '1'; 
-			neurons := neurons +1;
-			wait for clk_period;
-			counter := 0;
-			fifo_in_data_1 <= std_logic_vector(to_signed(1, 32));
-			fifo_in_ack_1 <= '1'; 
-			neurons := neurons +1;
-			wait for clk_period;
-			fifo_in_data_1 <= std_logic_vector(to_signed(10, 32));
-			fifo_in_ack_1 <= '0'; 
-
-		--end loop;
-			wait for clk_period;
-			wait for clk_period;
-			wait for clk_period;
-			wait for clk_period;
-			wait for clk_period;
-		write_mode <= '0'; -- accu add 
-fifo_in_ack_1 <= '1';
+		fifo_in_data_1 <= std_logic_vector(to_unsigned(3, 32));
+		fifo_in_ack_1 <= '1';
+		--while neurons < NBNEU loop
+		counter := 0;
+		neurons := neurons + 1;
+		wait for clk_period;
 		wait for clk_period;
 
-		-- TEST MODE ACCUMULATION 
-		write_mode <= '0'; -- accu add 
+		counter := 0;
+		fifo_in_data_1 <= std_logic_vector(to_signed(4, 32));
+		fifo_in_ack_1 <= '1';
+		neurons := neurons +1;
+		wait for clk_period;
+		counter := 0;
+		fifo_in_data_1 <= std_logic_vector(to_signed(5, 32));
+		fifo_in_ack_1 <= '1';
+		neurons := neurons +1;
+		wait for clk_period;
+		counter := 0;
+		fifo_in_data_1 <= std_logic_vector(to_signed(1, 32));
+		fifo_in_ack_1 <= '1';
+		neurons := neurons +1;
+		wait for clk_period;
+		fifo_in_data_1 <= std_logic_vector(to_signed(10, 32));
+		fifo_in_ack_1 <= '0';
+
+			--end loop;
+		wait for clk_period;
+		wait for clk_period;
+		wait for clk_period;
+		wait for clk_period;
+		wait for clk_period;
+		write_mode <= '0'; -- accu add
+		fifo_in_ack_1 <= '1';
+		wait for clk_period;
+
+		----------------------------
+		-- TEST MODE ACCUMULATION --
+		----------------------------
+
+		write_mode <= '0'; -- accu add
 		fifo_in_data_1 <= std_logic_vector(to_unsigned(64, 32));
 
 		counter := 0;

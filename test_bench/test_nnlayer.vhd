@@ -4,7 +4,7 @@
 --	neuron.vhd
 --	fsm.vhd
 --	distribuf.vhd
--- description: 
+-- description:
 --	simple test_bench to verify nnlayer behavior in normal
 --	operating conditions
 -- expected result:
@@ -23,7 +23,7 @@ use unimacro.Vcomponents.all;
 use ieee.numeric_std.all;
 
 -- entity declaration for your testbench.Dont declare any ports here
-ENTITY test_nnlayer IS 
+ENTITY test_nnlayer IS
 	END test_nnlayer;
 
 ARCHITECTURE behavior OF test_nnlayer IS
@@ -43,7 +43,7 @@ ARCHITECTURE behavior OF test_nnlayer IS
 		WACCU   : natural := WACCU;
 		-- Parameters for frame and number of neurons
 		FSIZE   : natural := FSIZE;
-		NBNEU   : natural := NBNEU 
+		NBNEU   : natural := NBNEU
 	);
 	port (
 		clk            : in  std_logic;
@@ -146,8 +146,11 @@ begin
 	stim_proc: process
 		variable counter : integer := 0;
 		variable neurons : integer := 0;
-	begin         
-		-- TEST CHARGEMENT DES POIDS
+	begin
+		-------------------------------
+		-- TEST CHARGEMENT DES POIDS --
+		-------------------------------
+
 		-- reset
 		clear <= '1';
 		wait for 3*clk_period;
@@ -159,16 +162,8 @@ begin
 		data_in_valid <= '1'; -- data is in FIFO
 		write_enable<='1';
 
-		-- while (.fsm_gen.sensor_we_mode = 0) loop
-		-- 	wait for clk_period;
-		-- end loop;
-
-		-- while (test_nnlayer.uut.fsm_gen.sensor_we_shift = 0) loop
-		-- 	wait for clk_period;
-		-- end loop;
-
 		wait for 9 * clk_period;
-		write_mode <= '0'; -- accu add 
+		write_mode <= '0'; -- accu add
 		data_in <= X"0001";
 
 		while neurons < NBNEU loop
@@ -185,10 +180,10 @@ begin
 			wait for 10 * clk_period;
 		end loop;
 
-	
+		----------------------------
+		-- TEST MODE ACCUMULATION --
+		----------------------------
 
-
-		-- TEST MODE ACCUMULATION 
 		write_data <= X"0000";
 
 		data_in_valid <= '1'; -- data is in FIFO
@@ -196,14 +191,9 @@ begin
 		counter := 0;
 		while (counter < FSIZE) loop
 			wait for clk_period;
-			ASSERT ( data_in_ready = '1')
-			REPORT "data_in_ready != 1";
 			counter := counter + 1;
 			wait for clk_period;
 		end loop;
-
-		ASSERT ( data_in_ready = '1')
-			REPORT "data_in_ready != 1";
 
 		wait;
 

@@ -76,11 +76,11 @@ ARCHITECTURE behavior OF test_recode IS
 
 begin
 	-- Instantiate the Unit Under Test (UUT)
-	uut: recode 
+	uut: recode
 	generic map (
-		 WDATA => WDATA,
-		 WOUT => WOUT,
-		 FSIZE => FSIZE
+		WDATA => WDATA,
+		WOUT => WOUT,
+		FSIZE => FSIZE
 	)
 	port map (
 		clk => clk,
@@ -123,6 +123,9 @@ begin
 		data_in_valid <= '0';
 		wait for 1 ns;
 
+		-------------------------------
+		-- TEST CHARGEMENT DES POIDS --
+		-------------------------------
 
 		addr_clear <= '0';
 		write_mode <= '1';
@@ -135,6 +138,10 @@ begin
 			counter := counter +1;
 		end loop;
 		write_data <= std_logic_vector(to_unsigned(1220,32));
+
+		----------------------
+		-- TEST MODE RECODE --
+		----------------------
 
 		-- mode de recode, traitement des données
 		write_mode <= '0';

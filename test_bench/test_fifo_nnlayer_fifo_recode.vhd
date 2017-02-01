@@ -6,7 +6,7 @@
 --	distribuf.vhd
 --	recode.vhd
 --	circbuf_fast.vhd
--- description: 
+-- de
 --	simple test_bench to verify nnlayer and recode behaviors in normal conditions
 --	with a fifo just before nnlayer,
 --	and a fifo between nnlayer and recode
@@ -36,7 +36,7 @@ use unimacro.Vcomponents.all;
 use ieee.numeric_std.all;
 
 -- entity declaration for your testbench.Dont declare any ports here
-ENTITY test_nnlayer_fifo IS 
+ENTITY test_nnlayer_fifo IS
 	END test_nnlayer_fifo;
 
 ARCHITECTURE behavior OF test_nnlayer_fifo IS
@@ -62,7 +62,7 @@ ARCHITECTURE behavior OF test_nnlayer_fifo IS
 		WACCU   : natural := WACCU;
 		-- Parameters for frame and number of neurons
 		FSIZE   : natural := FSIZE;
-		NBNEU   : natural := NBNEU 
+		NBNEU   : natural := NBNEU
 	);
 	port (
 		clk            : in  std_logic;
@@ -109,7 +109,7 @@ ARCHITECTURE behavior OF test_nnlayer_fifo IS
 	);
 	end component;
 
-	component recode 
+	component recode
 	generic(
 		WDATA : natural := WDATA;
 		WWEIGHT : natural := WWEIGHT;
@@ -208,9 +208,9 @@ begin
 		data_out_valid => data_out_valid,
 		end_of_frame => end_of_frame,
 		out_fifo_room => out_fifo_room
-		 );
+		);
 
-	fifo_1: circbuf_fast 
+	fifo_1: circbuf_fast
 	port map (
 		reset         => clear,
 		clk           => clk,
@@ -224,7 +224,7 @@ begin
 		fifo_out_cnt  => fifo_out_cnt_1
 	);
 
-	fifo_2: circbuf_fast 
+	fifo_2: circbuf_fast
 	port map (
 		reset         => clear,
 		clk           => clk,
@@ -238,7 +238,7 @@ begin
 		fifo_out_cnt  => fifo_out_cnt_2
 	);
 
-	recode_1 : recode 
+	recode_1 : recode
 	port map (
 		clk => clk,
 		addr_clear => clear,
@@ -254,7 +254,7 @@ begin
 		data_out_valid => recode_data_out_valid,
 		out_fifo_room => recode_out_fifo_room
 	);
-	
+
 	-- fifo 1 & nnlayer_1
 	write_data <= fifo_out_data_1;
 	data_in <= fifo_out_data_1;
@@ -301,7 +301,7 @@ begin
 
 	data_in_fifo : process
 	begin
-		fifo_in_ack_1 <= '1'; 
+		fifo_in_ack_1 <= '1';
 		wait for clk_period;
 		fifo_in_ack_1 <= '0';
 		wait for clk_period;
@@ -310,8 +310,12 @@ begin
 	stim_proc: process
 		variable counter : integer := 0;
 		variable neurons : integer := 0;
-	begin         
-		-- TEST CHARGEMENT DES POIDS
+	begin
+
+		-------------------------------
+		-- TEST CHARGEMENT DES POIDS --
+		-------------------------------
+
 		-- reset
 		clear <= '1';
 		wait for 3*clk_period;
@@ -335,10 +339,10 @@ begin
 		wait for clk_period;
 		fifo_in_data_1 <= X"00000032";
 
-		recode_write_mode <= '0'; -- accu add 
+		recode_write_mode <= '0'; -- accu add
 
 		write_mode <= '1'; -- load weights
-		recode_write_mode <= '0'; 
+		recode_write_mode <= '0';
 		recode_out_fifo_room <= X"000F";
 
 		-- load data into the fifo
@@ -357,20 +361,19 @@ begin
 			neurons := neurons +1;
 		end loop;
 
-		--wait for 8*clk_period;
 		wait for 30*clk_period;
-		
+
 		write_mode <= '0'; -- load weights
 
-		-- TEST MODE ACCUMULATION 
-		write_mode <= '0'; -- accu add 
+		----------------------------
+		-- TEST MODE ACCUMULATION --
+		----------------------------
+		write_mode <= '0'; -- accu add
 
 		counter := 0;
 		fifo_in_data_1 <= X"0000000F";
 		while (counter < FSIZE) loop
 			wait for clk_period;
-			ASSERT ( data_in_ready = '1')
-			REPORT "data_in_ready != 1";
 			counter := counter + 1;
 			wait for clk_period;
 		end loop;

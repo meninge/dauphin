@@ -1,7 +1,7 @@
 ----------------------------------------------------------------
 -- uut:
 --	fsm.vhd
--- description: 
+-- description:
 --	simple test_bench to verify fsm behavior in simple cases
 -- expected result:
 --	fsm should behave as we describe in the fsm graph
@@ -15,7 +15,7 @@ library UNIMACRO;
 use unimacro.Vcomponents.all;
 
 -- entity declaration for your testbench.Dont declare any ports here
-ENTITY test_fsm IS 
+ENTITY test_fsm IS
 	END test_fsm;
 
 ARCHITECTURE behavior OF test_fsm IS
@@ -26,7 +26,7 @@ ARCHITECTURE behavior OF test_fsm IS
 		port (
 			     reset         : in  std_logic;
 			     clk           : in  std_logic;
-			     -- Control signals
+			-- Control signals
 			     ctrl_we_mode    : out  std_logic;
 			     ctrl_we_shift   : out  std_logic;
 			     ctrl_we_valid   : out  std_logic;
@@ -34,21 +34,21 @@ ARCHITECTURE behavior OF test_fsm IS
 			     ctrl_accu_add   : out  std_logic;
 			     ctrl_shift_en   : out  std_logic;
 			     ctrl_shift_copy : out  std_logic;
-			     -- Address used for Read and Write
+			-- Address used for Read and Write
 			     addr            : out  std_logic_vector(9 downto 0);
-			     -- Ports for Write Enable
+			-- Ports for Write Enable
 			     n0_we_prev         : out  std_logic;
 			     nN_we_next         : in std_logic;
-			     -- Sensors, for synchronization with the controller
+			-- Sensors, for synchronization with the controller
 			     sensor_shift    : in std_logic;
 			     sensor_copy     : in std_logic;
 			     sensor_we_mode  : in std_logic;
 			     sensor_we_shift : in std_logic;
 			     sensor_we_valid : in std_logic;
 
-			     -- inputs
+			-- inputs
 			     fsm_mode	: in std_logic;
-			     -- out FIFO
+			-- out FIFO
 			     out_fifo_in_cnt  : in std_logic_vector(15 downto 0)
 		     );
 	end component;
@@ -88,32 +88,32 @@ begin
 			    NB_NEURONS => 1
 		    )
 	port map (
-			 reset => reset,
-			 clk => clk         ,
-			 -- Control signals
-			 ctrl_we_mode => ctrl_we_mode   ,
-			 ctrl_we_shift => ctrl_we_shift  ,
-			 ctrl_we_valid => ctrl_we_valid  ,
-			 ctrl_accu_clear => ctrl_accu_clear,
-			 ctrl_accu_add => ctrl_accu_add  ,
-			 ctrl_shift_en => ctrl_shift_en  ,
-			 ctrl_shift_copy => ctrl_shift_copy,
-			 -- Address used for Read and Write
-			 addr => addr           ,
-			 -- Ports for Write Enable
-			 n0_we_prev => n0_we_prev        ,
-			 nN_we_next => nN_we_next        ,
-			 -- Sensors, for synchronization with the controller
-			 sensor_shift => sensor_shift   ,
-			 sensor_copy => sensor_copy    ,
-			 sensor_we_mode => sensor_we_mode ,
-			 sensor_we_shift => sensor_we_shift,
-			 sensor_we_valid => sensor_we_valid,
-			 -- inputs
-			 fsm_mode => fsm_mode,
-			 -- out FIFO
-			 out_fifo_in_cnt  => out_fifo_in_cnt
-		 );       
+			reset => reset,
+			clk => clk         ,
+			-- Control signals
+			ctrl_we_mode => ctrl_we_mode   ,
+			ctrl_we_shift => ctrl_we_shift  ,
+			ctrl_we_valid => ctrl_we_valid  ,
+			ctrl_accu_clear => ctrl_accu_clear,
+			ctrl_accu_add => ctrl_accu_add  ,
+			ctrl_shift_en => ctrl_shift_en  ,
+			ctrl_shift_copy => ctrl_shift_copy,
+			-- Address used for Read and Write
+			addr => addr           ,
+			-- Ports for Write Enable
+			n0_we_prev => n0_we_prev        ,
+			nN_we_next => nN_we_next        ,
+			-- Sensors, for synchronization with the controller
+			sensor_shift => sensor_shift   ,
+			sensor_copy => sensor_copy    ,
+			sensor_we_mode => sensor_we_mode ,
+			sensor_we_shift => sensor_we_shift,
+			sensor_we_valid => sensor_we_valid,
+			-- inputs
+			fsm_mode => fsm_mode,
+			-- out FIFO
+			out_fifo_in_cnt  => out_fifo_in_cnt
+		);
 
 
 	-- Clock process definitions( clock with 50% duty cycle is generated here.
@@ -126,9 +126,9 @@ begin
 	end process;
 	-- Stimulus process
 	stim_proc: process
-	begin         
+	begin
 		wait for 1 ns;
-		
+
 		-- reset component
 		reset       <= '1';
 		fsm_mode    <= '0';
@@ -139,7 +139,7 @@ begin
 		reset       <= '0';
 		fsm_mode    <= '0';
 		wait for 1 ns;
-		
+
 		-- data incoming accu_data
 		reset       <= '0';
 		sensor_we_valid <= '1';

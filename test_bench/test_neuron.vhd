@@ -1,10 +1,10 @@
 ----------------------------------------------------------------
 -- uut:
 --	neuron.vhd
--- description: 
+-- description:
 --	simple test_bench to verify neuron behavior in simple cases
 -- expected result:
---	neuron should behave as we describe in the neuron schematic 
+--	neuron should behave as we describe in the neuron schematic
 ----------------------------------------------------------------
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -17,7 +17,7 @@ use unimacro.Vcomponents.all;
 use ieee.numeric_std.all;
 
 -- entity declaration for your testbench.Dont declare any ports here
-ENTITY test_neuron IS 
+ENTITY test_neuron IS
 	END test_neuron;
 
 ARCHITECTURE behavior OF test_neuron IS
@@ -120,7 +120,7 @@ begin
 			 sensor_we_mode => sensor_we_mode ,
 			 sensor_we_shift => sensor_we_shift,
 			 sensor_we_valid => sensor_we_valid
-		 );       
+		 );
 
 
 	-- Clock process definitions( clock with 50% duty cycle is generated here.
@@ -133,25 +133,23 @@ begin
 	end process;
 	-- Stimulus process
 	stim_proc: process
-	begin         
+	begin
+		-------------------------------
+		-- TEST CHARGEMENT DES POIDS --
+		-------------------------------
+
 		wait for clk_period;
 		ctrl_we_mode <= '1';
 		sh_data_in <= X"00000000";
 
 		wait for clk_period;
-		ASSERT (sensor_we_mode = '1')
-			REPORT "SENSOR WE MODE != 1";
 		we_prev <= '1';
 		ctrl_we_shift <= '1';
-		ASSERT (sensor_we_shift = '1')
-			REPORT "SENSOR WE SHIFT != 1";
 
 		wait for clk_period;
 		we_prev <= '0';
 		ctrl_we_shift <= '0';
 		ctrl_we_valid <= '1';
-		ASSERT (sensor_we_shift = '0')
-			REPORT "SENSOR WE SHIFT != 0";
 
 		for I in 0 to 783 loop
 			addr <= std_logic_vector(to_unsigned(I, addr'length));
@@ -162,22 +160,20 @@ begin
 		ctrl_we_valid <= '0';
 		ctrl_we_shift <= '1';
 		we_prev <= '0';
-		ASSERT (we_next = '1')
-			REPORT "WE next != 1";
 
 		wait for clk_period;
-		ASSERT (sensor_we_shift = '1')
-			REPORT "SENSOR WE shift != 1";
 		ctrl_we_shift <= '0';
 
 		wait for clk_period;
 		wait for clk_period;
 		wait for clk_period;
+
+		-----------------------
+		-- TEST ACCUMULATION --
+		-----------------------
 		ctrl_we_mode <= '0';
 
 		wait for clk_period;
-		ASSERT (sensor_we_mode = '0')
-			REPORT "SENSOR WE MODE != 0";
 		ctrl_accu_clear <= '1';
 
 		wait for clk_period;
@@ -185,31 +181,24 @@ begin
 		ctrl_accu_add <= '1';
 		data_in <= X"00000001";
 		addr <= std_logic_vector(to_unsigned(0, addr'length));
-		
 
 		for I in 0 to 783 loop
 			addr <= std_logic_vector(to_unsigned(I, addr'length));
 			wait for clk_period;
 		end loop;
-		
+
 		ctrl_accu_add <= '0';
 		ctrl_shift_copy <= '1';
 
 		wait for clk_period;
-		ASSERT (sensor_copy = '1')
-			REPORT "SENSOR cpy != 1";
 		ctrl_shift_copy <= '0';
 		ctrl_shift_en <= '1';
-		ASSERT (sh_data_out = 392)
-			REPORT "sh data out != 392";
 
 		wait for clk_period;
-		ASSERT (sensor_shift = '1')
-			REPORT "SENSOR shift != 1";
 		ctrl_shift_en <= '0';
 
 		wait for clk_period;
-		
+
 		wait;
 	end process;
 
