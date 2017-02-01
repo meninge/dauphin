@@ -229,7 +229,7 @@ architecture arch_imp of myaxifullmaster_v1_0_S00_AXI is
 	constant LAYER1_WACCU   : natural := 32;
 	constant LAYER1_FSIZE   : natural := 784;
 	--constant LAYER1_FSIZE   : natural := 64;
-	constant LAYER1_NBNEU   : natural := 100;
+	constant LAYER1_NBNEU   : natural := 200;
 	--constant LAYER1_NBNEU   : natural := 4;
 
 	constant RECODE_WDATA   : natural := LAYER1_WACCU;

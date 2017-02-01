@@ -83,7 +83,10 @@ architecture synth of circbuf_fast is
 
 begin
 
-	-- Sequential process
+	---------------------------------------------
+	----------- Sequential processes ------------
+	---------------------------------------------
+
 	process (clk)
 	begin
 		if rising_edge(clk) then
@@ -118,7 +121,10 @@ begin
 		end if;
 	end process;
 
-	-- Combinatorial process
+	---------------------------------------------
+	--------- Combinatorial processes -----------
+	---------------------------------------------
+
 	process (
 		reset,
 		reg_cnt_in, reg_cnt_out,
@@ -236,7 +242,9 @@ begin
 
 	end process;
 
-	-- Assignment of top-level ports
+	---------------------------------------------
+	----------- Ports assignements --------------
+	---------------------------------------------
 	fifo_in_rdy   <= regin_rdy;
 	fifo_out_rdy  <= regout_rdy;
 	fifo_out_data <= regout_data;

@@ -46,19 +46,12 @@ entity neuron is
 end neuron;
 
 architecture synth of neuron is
-	-- BRAM qui contient tous les coÃ©s
-
-	--type ram_type is array (0 to FSIZE - 1) of std_logic_vector(WWEIGHT-1 downto 0);
-	--signal ram : ram_type := (others => (others => '0'));
-	--attribute ram_style : string;Synthesis
-	--attribute ram_style of ram : signal is "block";
-
 	-- Registre contenant l'accumulation du DSP
 	signal accu : signed(47 downto 0) := (others => '0');
 	-- Registre contenant la copy de l'accu
 	signal mirror : std_logic_vector(WACCU-1 downto 0) := (others => '0');
 
-	-- Registre mÃ©morisant si on se trouve dans un Ãtat de config
+	-- Registre memorisant si on se trouve dans un etat de config
 	signal reg_config : std_logic := '0';
 
 	-- output signals
@@ -102,17 +95,16 @@ begin
 		we	=> we_ram,
 		en	=> en_ram,
 		addr	=> addr,
-		-- TODO : METTRE UN RESIZE
 		di	=> write_data_in,
 		do	=> weight
 		);
 
-	-------------------------------------------------------------------
-	-- Output ports
-	-------------------------------------------------------------------
+	---------------------------------------------
+	----------- Sequential processes ------------
+	---------------------------------------------
 
 	mac : process (clk)
-	begin 
+	begin
 		if rising_edge(clk) then
 			-- Mode accumulation
 			if (ctrl_we_mode = '0') then
@@ -128,7 +120,7 @@ begin
 	end process mac;
 
 	shift: process (clk)
-	begin 
+	begin
 		if (rising_edge(clk)) then
 			-- we have to copy the accu reg into the miroir reg
 			if ((ctrl_shift_copy = '1')) then
@@ -142,7 +134,7 @@ begin
 
 
 	reg_conf : process (clk)
-	begin 
+	begin
 		if rising_edge(clk) then
 			if (ctrl_we_mode = '1') and (ctrl_we_shift = '1') then
 				-- update the reg_config
@@ -153,33 +145,17 @@ begin
 	end process reg_conf;
 
 
-	--load_weight : process (clk)
-	--begin 
-	--	if rising_edge(clk) then
-	--		-- data available on input
-	--		if (ctrl_we_valid = '1') then
-	--			if (ctrl_we_mode = '1') then
-	--				if (reg_config = '1') then
-	--					-- load all weight
-	--					ram(to_integer(unsigned(addr))) <= write_data(WWEIGHT-1 downto 0);
-	--				end if;
-	--			else
-	--				weight <= ram(to_integer(unsigned(addr)));
-	--			end if;
-	--		end if;
-	--	end if;
-	--end process load_weight;
+	---------------------------------------------
+	--------- Combinatorial processes -----------
+	---------------------------------------------
 
-	-- Tous les ports doivent etre affecté en combinatoire ici
-
-	-- Ceci est un process combinatoire
 	sensor : process (ctrl_we_mode, ctrl_we_shift, ctrl_shift_copy, ctrl_shift_en)
-	begin 
+	begin
 		-- updating the reg_conf
 		if (ctrl_we_shift = '1') then
 			-- notify the fsm
 			out_sensor_we_shift <= '1';
-		else 
+		else
 			out_sensor_we_shift <= '0';
 		end if;
 		if (ctrl_we_mode = '1') then
@@ -196,11 +172,14 @@ begin
 		-- we have to shift the miroir prev into the miroir next
 		if (ctrl_shift_en = '1') then
 			out_sensor_shift <= '1';
-		else 
+		else
 			out_sensor_shift <= '0';
 		end if;
 	end process sensor;
 
+	---------------------------------------------
+	----------- Ports assignements --------------
+	---------------------------------------------
 
 	en_ram <= '1';
 	we_ram <= ctrl_we_mode and reg_config and not(ctrl_we_shift);
@@ -217,5 +196,4 @@ begin
 	-- to get right conversion for the BRAM
 	write_data_in <= std_logic_vector(resize(signed(write_data), WWEIGHT));
 
-				
 end architecture;

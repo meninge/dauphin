@@ -61,10 +61,9 @@ architecture synth of fsm is
 
 	type STATE is (RESET_STATE, MODE_WEIGHT, NOTIFY_1N, WAIT_NOTIFY,
 	WAIT_WEIGHT, SEND_WEIGHT, WAIT_DATA, END_ACC, SHIFT_NOTIFY, END_CONFIG, MODE_ACC, WAIT_1D, SEND_DATA, MODE_FSM,
-       	SHIFT_MODE, SHIFT_CPY, SHIFT, WAIT_SHIFT_CPY, WAIT_SHIFT);
+	SHIFT_MODE, SHIFT_CPY, SHIFT, WAIT_SHIFT_CPY, WAIT_SHIFT);
 	-- Internal signals
 	constant TMP_CST : integer := integer(( LOG( real(NB_NEURONS),real(FANOUT))));
-	--constant MIN_OUT_FIFO_IN_CNT : unsigned := to_unsigned( TMP_CST, 32 )  + 10;
 	constant MIN_OUT_FIFO_IN_CNT : unsigned := to_unsigned(30, 32);
 	constant OUT_FIFO_MARGIN : unsigned := to_unsigned(2,32);
 
@@ -112,9 +111,7 @@ begin
 				current_state_acc <= RESET_STATE;
 				current_state_mirror <= SHIFT_MODE;
 				first_neuron <= '0';
-				--next_flag_mirror_chain <= '0';
 			else
-				-- present = next variable
 				-- state of mirror FSM
 				current_state_mirror <= next_state_mirror;
 				-- state of neurons accumulation FSM
@@ -138,11 +135,9 @@ begin
 	-----------------------------
 	-- Combinatorial processes --
 	-----------------------------
-	-- La liste de sensibilite doit contenir tous les signaux sur les quels on fait des 'if' par exemple
 
 	-- process to handle classic neurons accumulation and weight loading
 	process (current_state_acc, sensor_we_mode, sensor_we_shift, sensor_we_valid, current_addr, nN_we_next, fsm_mode, first_neuron, config_written)
-		-- variable var_doin    : std_logic := '0';
 	begin
 		-- need to set all signals at each step
 
@@ -168,6 +163,7 @@ begin
 			when RESET_STATE =>
 				-- in case of reset, fsm goes to MODE_FSM
 				next_state_acc <= MODE_FSM;
+
 			-- on est en mode chargement des poids
 			-- on attend que les neurones soient au courant
 			when MODE_WEIGHT =>
@@ -181,6 +177,7 @@ begin
 				else
 					next_state_acc <= MODE_WEIGHT;
 				end if;
+
 			-- on passe le registre de config au premier neurone
 			-- shift et attente dans le meme etat
 			when NOTIFY_1N =>
@@ -197,12 +194,14 @@ begin
 					out_n0_we_prev <= '0';
 					next_state_acc <= NOTIFY_1N;
 				end if;
+
 			-- on shift le registre de config
 			when SHIFT_NOTIFY =>
 				out_ctrl_we_mode <= '1';
 				out_ctrl_we_shift <= '1';
 
 				next_state_acc <= WAIT_NOTIFY;
+
 			-- attente du passage du registre de config
 			when WAIT_NOTIFY =>
 				out_ctrl_we_mode <= '1';
@@ -215,6 +214,7 @@ begin
 						next_state_acc <= WAIT_NOTIFY;
 					end if;
 				end if;
+
 			-- un neurone est pret à configurer sa memoire
 			-- on attend qu'un poids arrive sur la fifo
 			when WAIT_WEIGHT =>
@@ -227,6 +227,7 @@ begin
 				else
 					next_state_acc <= WAIT_WEIGHT;
 				end if;
+
 			-- un poids est dans la fifo
 			-- le neurone prend le poids
 			when SEND_WEIGHT =>
@@ -240,8 +241,9 @@ begin
 					next_addr <= std_logic_vector(unsigned(current_addr) + 1);
 					next_state_acc <= WAIT_WEIGHT;
 				end if;
+
 			-- on a configure tous les neurones
-			-- on repasse en choix de mode 
+			-- on repasse en choix de mode
 			when END_CONFIG =>
 				next_config_written <= true;
 				next_state_acc <= MODE_FSM;
@@ -249,11 +251,10 @@ begin
 			-- on est en mode accumulation
 			-- on attend que les neurones soient au courant
 			when MODE_ACC =>
-				--if (fsm_mode = '1') then
-				if (fsm_mode = '1') then 
+				if (fsm_mode = '1') then
 					if (not(config_written)) then
 						next_state_acc <= MODE_WEIGHT;
-					else 
+					else
 						next_state_acc <= RESET_STATE;
 					end if;
 				else
@@ -263,13 +264,13 @@ begin
 						next_state_acc <= MODE_ACC;
 					end if;
 				end if;
+
 			when WAIT_1D =>
 				out_ctrl_accu_clear <= '1';
-				--if (fsm_mode = '1') then
 				if (fsm_mode = '1' ) then
 					if (not(config_written)) then
 						next_state_acc <= MODE_WEIGHT;
-					else 
+					else
 						next_state_acc <= RESET_STATE;
 					end if;
 				else
@@ -279,6 +280,7 @@ begin
 						next_state_acc <= WAIT_1D;
 					end if;
 				end if;
+
 			when SEND_DATA =>
 				out_ctrl_accu_add <= '1';
 				-- incr addr for next round
@@ -288,6 +290,7 @@ begin
 					next_state_acc <= WAIT_DATA;
 					next_addr <= std_logic_vector( unsigned(current_addr) + 1);
 				end if;
+
 			when WAIT_DATA =>
 				next_addr <= current_addr;
 				if ( sensor_we_valid = '1') then
@@ -295,6 +298,7 @@ begin
 				else
 					next_state_acc <= WAIT_DATA;
 				end if;
+
 			when END_ACC =>
 				next_config_written <= false;
 				-- need to pass flag to mirror FSM
@@ -302,12 +306,12 @@ begin
 				-- mode switching before
 				-- going again in acc loop again
 				next_state_acc <= MODE_FSM;
+
 			when MODE_FSM=>
-				--if (fsm_mode = '1') then
 				if (fsm_mode = '1') then
 					if (not(config_written)) then
 						next_state_acc <= MODE_WEIGHT;
-					else 
+					else
 						next_state_acc <= RESET_STATE;
 					end if;
 				else
@@ -322,8 +326,6 @@ begin
 	-- process to handle mirror chain monitoring
 	process (current_state_mirror, current_shift_counter, sensor_copy, flag_mirror_chain, out_fifo_in_cnt)
 	begin
-		-- signals that are just up for one cycle go there
-		--out_fifo_in_ack <= '0';
 		out_ctrl_shift_copy <= '0';
 		out_ctrl_shift_en <= '0';
 		next_shift_counter <= (others => '0');
@@ -332,7 +334,6 @@ begin
 		case current_state_mirror is
 			when SHIFT_MODE =>
 				if (flag_mirror_chain = '1') then
-					--next_flag_mirror_chain <= '0';
 					next_state_mirror <= SHIFT_CPY;
 				else
 					next_state_mirror <= SHIFT_MODE;
@@ -368,10 +369,12 @@ begin
 
 	end process;
 
-	-- port assignements
-	addr <= current_addr;
+	---------------------------------------------
+	----------- Ports assignements --------------
+	---------------------------------------------
 
-	ctrl_we_mode <= out_ctrl_we_mode; 
+	addr <= current_addr;
+	ctrl_we_mode <= out_ctrl_we_mode;
 	ctrl_we_shift <= out_ctrl_we_shift;
 	ctrl_we_valid <= out_ctrl_we_valid;
 	ctrl_accu_clear <= out_ctrl_accu_clear;

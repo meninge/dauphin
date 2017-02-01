@@ -1,4 +1,3 @@
-
 -- This block recodes data on-the-fly
 
 library ieee;
@@ -68,7 +67,10 @@ architecture synth of recode is
 	signal next_config_written : boolean := false;
 
 begin
-	-- Sequential process
+	---------------------------------------------
+	----------- Sequential processes ------------
+	---------------------------------------------
+
 	process (clk)
 	begin
 		if rising_edge(clk) then
@@ -88,6 +90,10 @@ begin
 			end if;
 		end if;
 	end process;
+
+	---------------------------------------------
+	--------- Combinatorial processes -----------
+	---------------------------------------------
 
 	-- Process combinatoire de la FSM
 	process (current_state, write_mode_in, write_enable_in, addr, out_fifo_room_in, data_in_valid_in, cur_ram, data_in_in, config_written)
@@ -161,13 +167,9 @@ begin
 			end case;
 	end process;
 
-	-- write_ready    <= '1';
-
-	-- data_in_ready  <= '1' when unsigned(out_fifo_room) > 0 else '0';
-
-	-- data_out       <= std_logic_vector(resize(signed(data_in), WOUT));
-
-	-- data_out_valid <= data_in_valid;
+	---------------------------------------------
+	----------- Ports assignements --------------
+	---------------------------------------------
 
 	write_ready <= out_write_ready;
 	data_in_ready <= out_data_in_ready;

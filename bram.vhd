@@ -22,6 +22,9 @@ architecture syn of ram is
 	type ram_type is array (SIZE-1 downto 0) of std_logic_vector (WDATA-1 downto 0);
 	signal RAM : ram_type := (others => (others => '0'));
 begin
+	---------------------------------------------
+	----------- Sequential processes ------------
+	---------------------------------------------
 	process (clk)
 	begin
 		if rising_edge(clk) then
