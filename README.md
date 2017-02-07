@@ -12,5 +12,5 @@ Architecture:
   * myaxifullmaster_v1_00 : top file
   * myaxifullmaster_v1_00_S00_AXI : AXI slave, contains all elements of neural net
   * myaxifullmaster_v1_00_M00_AXI : AXI master
-* `./test_bench/ : contains some test benches
+* `./test_bench/` : contains some test benches
 
